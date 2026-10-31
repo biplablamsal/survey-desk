@@ -1,0 +1,467 @@
+{
+ "v": 2,
+ "module": "property",
+ "case": {
+  "f": {
+   "case_claimNo": "7200111/2799000010",
+   "case_policyNo": "1200111/2699000020",
+   "case_company": "Test Insurance Company Limited",
+   "case_surveyor": "Er. Test Surveyor",
+   "case_lic": "0000/000/00",
+   "case_survey": "2026-10-17",
+   "case_acc": "2026-10-10",
+   "case_loc": "Test Market, Birgunj",
+   "case_ctype": "Fire",
+   "case_status": "Preliminary Survey",
+   "pol_type": "Fire & special perils",
+   "pol_issue": "2026-01-10",
+   "pol_start": "2026-01-11",
+   "pol_end": "2027-01-10",
+   "pol_insured": "Test Traders Pvt. Ltd.",
+   "pol_addr": "Birgunj-4",
+   "pol_tel": "9800000011",
+   "pol_sumB": "5000000",
+   "pol_sumC": "3000000",
+   "pol_ex": "25000",
+   "pol_bank": "Test Bank Ltd.",
+   "pol_endors": "Special perils extension.",
+   "pol_v1": "Obtained",
+   "pol_v2": "Verified",
+   "pol_v3": "Verified",
+   "pol_v4": "Verified",
+   "risk_kind": "Commercial building",
+   "risk_addr": "Test Market, Birgunj-4",
+   "risk_constr": "RCC frame",
+   "risk_floors": "3",
+   "risk_area": "4500",
+   "risk_year": "2015",
+   "risk_occ": "Retail shop and godown",
+   "risk_own": "Owner occupied",
+   "risk_prot": "Fire extinguishers, CCTV",
+   "risk_prev": "None",
+   "risk_prevD": "NA",
+   "risk_oName": "Gopal Test",
+   "risk_oTel": "9800000012",
+   "risk_rel": "Director",
+   "inc_time": "02:30",
+   "inc_cause": "Electrical short circuit",
+   "inc_origin": "Ground floor godown",
+   "inc_auth": "Yes",
+   "inc_authR": "Fire brigade, report FB-77",
+   "inc_wit": "Yes",
+   "inc_media": "Yes",
+   "inc_mitig": "Stock moved out; fire brigade extinguished the fire.",
+   "inc_narr": "Dummy narrative: a fire broke out at night in the ground floor godown and spread to the stock.",
+   "dmg_date": "2026-10-11",
+   "dmg_sev": "Moderate",
+   "dmg_extent": "Ground floor godown and stock damaged by fire and water.",
+   "dmg_bldg": "Wall plaster, ceiling and wiring damaged.",
+   "dmg_cont": "Shelving burnt.",
+   "dmg_mach": "Not affected.",
+   "dmg_areas": "Ground floor",
+   "dmg_safe": "Pending",
+   "dmg_more": "Yes",
+   "dmg_rem": "Structural check recommended.",
+   "est_bld": "450000",
+   "est_cont": "80000",
+   "est_mach": "0",
+   "est_stk": "900000",
+   "est_oth": "30000",
+   "concl_text": "Dummy conclusion: the insured commercial building sustained moderate damage due to fire. Estimates are subject to verification.",
+   "concl_name": "Er. Test Surveyor",
+   "concl_lic": "0000/000/00",
+   "concl_date": "2026-10-19"
+  },
+  "b": {
+   "a": [],
+   "b": []
+  },
+  "x": {},
+  "mod": "property",
+  "st": "Physical Inspection",
+  "due": "2026-10-21",
+  "asg": "2026-10-12",
+  "note": "Get stock list from insured",
+  "pSub": "",
+  "fSub": "",
+  "owner": "Surveyor",
+  "pa": {
+   "g": [
+    {
+     "t": "Retaining wall 34' part (behind bungalows No 7 & 8 at west side)",
+     "rows": [
+      {
+       "k": "i",
+       "d": "Earthwork in Excavation",
+       "u": "Cft",
+       "c": {
+        "n": "1",
+        "l": "34",
+        "b": "31.87",
+        "h": "area",
+        "q": ""
+       },
+       "a": {
+        "n": "1",
+        "l": "34",
+        "b": "27.0894",
+        "h": "area",
+        "q": ""
+       },
+       "same": false,
+       "cr": "24.20",
+       "ar": "21.86"
+      },
+      {
+       "k": "i",
+       "d": "Back filling",
+       "u": "Cft",
+       "c": {
+        "n": "",
+        "l": "",
+        "b": "",
+        "h": "",
+        "q": "1083.58"
+       },
+       "a": {
+        "n": "",
+        "l": "",
+        "b": "",
+        "h": "",
+        "q": "921.04"
+       },
+       "same": false,
+       "cr": "20.02",
+       "ar": "19.28"
+      },
+      {
+       "k": "i",
+       "d": "Stone masonry (1:6)",
+       "u": "Cft",
+       "c": {
+        "n": "1",
+        "l": "34",
+        "b": "40",
+        "h": "area",
+        "q": ""
+       },
+       "a": {
+        "n": "1",
+        "l": "34",
+        "b": "40",
+        "h": "area",
+        "q": ""
+       },
+       "same": true,
+       "cr": "326.00",
+       "ar": "325.45"
+      },
+      {
+       "k": "i",
+       "d": "PCC (1:1:2) for RCC works",
+       "u": "Cft",
+       "c": {
+        "n": "",
+        "l": "",
+        "b": "",
+        "h": "",
+        "q": ""
+       },
+       "a": {
+        "n": "",
+        "l": "",
+        "b": "",
+        "h": "",
+        "q": ""
+       },
+       "same": true,
+       "cr": "605.24",
+       "ar": "513.48"
+      },
+      {
+       "k": "s",
+       "d": "Beam above masonry wall",
+       "u": "",
+       "c": {
+        "n": "1",
+        "l": "34",
+        "b": "2",
+        "h": "1",
+        "q": ""
+       },
+       "a": {
+        "n": "1",
+        "l": "34",
+        "b": "2",
+        "h": "1",
+        "q": ""
+       },
+       "same": true,
+       "cr": "",
+       "ar": ""
+      },
+      {
+       "k": "s",
+       "d": "Column",
+       "u": "",
+       "c": {
+        "n": "6",
+        "l": "0.75",
+        "b": "0.75",
+        "h": "7.25",
+        "q": ""
+       },
+       "a": {
+        "n": "6",
+        "l": "0.75",
+        "b": "0.75",
+        "h": "7.25",
+        "q": ""
+       },
+       "same": true,
+       "cr": "",
+       "ar": ""
+      },
+      {
+       "k": "s",
+       "d": "Top beam",
+       "u": "",
+       "c": {
+        "n": "1",
+        "l": "34",
+        "b": "0.75",
+        "h": "0.75",
+        "q": ""
+       },
+       "a": {
+        "n": "1",
+        "l": "34",
+        "b": "0.75",
+        "h": "0.75",
+        "q": ""
+       },
+       "same": true,
+       "cr": "",
+       "ar": ""
+      },
+      {
+       "k": "t",
+       "d": "",
+       "u": "",
+       "c": {
+        "n": "",
+        "l": "",
+        "b": "",
+        "h": "",
+        "q": ""
+       },
+       "a": {
+        "n": "",
+        "l": "",
+        "b": "",
+        "h": "",
+        "q": ""
+       },
+       "same": true,
+       "cr": "",
+       "ar": ""
+      },
+      {
+       "k": "s",
+       "d": "Shear wall",
+       "u": "",
+       "c": {
+        "n": "1",
+        "l": "29.5",
+        "b": "0.58",
+        "h": "7.25",
+        "q": ""
+       },
+       "a": {
+        "n": "1",
+        "l": "29.5",
+        "b": "0.58",
+        "h": "7.25",
+        "q": ""
+       },
+       "same": true,
+       "cr": "",
+       "ar": ""
+      },
+      {
+       "k": "i",
+       "d": "Reinforcement",
+       "u": "kg",
+       "c": {
+        "n": "",
+        "l": "",
+        "b": "",
+        "h": "",
+        "q": ""
+       },
+       "a": {
+        "n": "",
+        "l": "",
+        "b": "",
+        "h": "",
+        "q": ""
+       },
+       "same": true,
+       "cr": "120.21",
+       "ar": "112.47"
+      },
+      {
+       "k": "s",
+       "d": "Column and beams",
+       "u": "",
+       "c": {
+        "n": "",
+        "l": "",
+        "b": "",
+        "h": "",
+        "q": "(111.59/35.28)*7850*.02"
+       },
+       "a": {
+        "n": "",
+        "l": "",
+        "b": "",
+        "h": "",
+        "q": "(111.59/35.28)*7850*.02"
+       },
+       "same": true,
+       "cr": "",
+       "ar": ""
+      },
+      {
+       "k": "s",
+       "d": "Shear wall",
+       "u": "",
+       "c": {
+        "n": "",
+        "l": "",
+        "b": "",
+        "h": "",
+        "q": "(124.05/35.28)*7850*.0125"
+       },
+       "a": {
+        "n": "",
+        "l": "",
+        "b": "",
+        "h": "",
+        "q": "(124.05/35.28)*7850*.0125"
+       },
+       "same": true,
+       "cr": "",
+       "ar": ""
+      },
+      {
+       "k": "i",
+       "d": "Form works",
+       "u": "sft",
+       "c": {
+        "n": "2",
+        "l": "34",
+        "b": "",
+        "h": "1",
+        "q": ""
+       },
+       "a": {
+        "n": "2",
+        "l": "34",
+        "b": "",
+        "h": "1",
+        "q": ""
+       },
+       "same": true,
+       "cr": "97.62",
+       "ar": "67.26"
+      },
+      {
+       "k": "s",
+       "d": "Column",
+       "u": "",
+       "c": {
+        "n": "6",
+        "l": "3",
+        "b": "",
+        "h": "7.25",
+        "q": ""
+       },
+       "a": {
+        "n": "6",
+        "l": "3",
+        "b": "",
+        "h": "7.25",
+        "q": ""
+       },
+       "same": true,
+       "cr": "",
+       "ar": ""
+      },
+      {
+       "k": "i",
+       "d": "Dismantle Works",
+       "u": "cft",
+       "c": {
+        "n": "",
+        "l": "",
+        "b": "",
+        "h": "",
+        "q": "235.64"
+       },
+       "a": {
+        "n": "",
+        "l": "",
+        "b": "",
+        "h": "",
+        "q": "235.64"
+       },
+       "same": true,
+       "cr": "295.45",
+       "ar": "224.72"
+      }
+     ]
+    }
+   ],
+   "salv": [
+    {
+     "t": "",
+     "u": "kg",
+     "lines": [
+      {
+       "d": "Retaining wall 34' part - reinforcement",
+       "q": "841.61"
+      },
+      {
+       "d": "Retaining wall other than A above",
+       "q": "643.41"
+      },
+      {
+       "d": "River side Retaining wall 15 height part",
+       "q": "915.80"
+      }
+     ],
+     "pct": "70",
+     "rate": "25"
+    },
+    {
+     "t": "",
+     "u": "cft",
+     "lines": [
+      {
+       "d": "Gabion Works (River Side)",
+       "q": "4689.75"
+      }
+     ],
+     "pct": "15",
+     "rate": "77"
+    }
+   ],
+   "excess": "10000",
+   "round": "100000",
+   "profit": "",
+   "under": "",
+   "unote": "insured sum has been checked/verified adequate"
+  }
+ }
+}

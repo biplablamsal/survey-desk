@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+    <meta name="theme-color" content="#0b5fa5" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Survey Desk</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside id="side">
+        <div class="brand">🛡 Survey Desk<small>Insurance claim surveys</small></div>
+        <button class="mi cta" id="nw">+ New case</button
+        ><button class="mi" id="db">▦ Dashboard</button
+        ><button class="mi" id="mc">▤ All cases</button
+        ><button class="mi" id="ms">⚙ Settings &amp; role</button
+        ><button class="mi" id="mi">⇪ Import case</button>
+        <div id="cm" hidden>
+          <h5>Current case</h5>
+          <select id="cs" hidden></select>
+          <nav id="nav"></nav>
+          <button class="mi" id="dx" hidden>⇄ Export / import this case</button
+          ><button class="mi" id="del" hidden>🗑 Delete case</button>
+        </div>
+        <div class="sf">
+          <span class="pill" id="rl"></span>
+          <div id="sv" class="mu"></div>
+        </div>
+      </aside>
+      <div class="content">
+        <header class="top">
+          <button class="b" id="hb">☰</button><strong>Survey Desk</strong>
+        </header>
+        <div id="dash"></div>
+        <div class="app" hidden><main id="main"></main></div>
+      </div>
+    </div>
+    <dialog id="pv" style="width: min(920px, 96vw)">
+      <div class="bar" style="margin-top: 0">
+        <b>Report layout preview</b><button class="b" id="pvx">Close</button>
+      </div>
+      <div class="pvb" id="pvb"></div>
+    </dialog>
+    <dialog id="dp">
+      <h3>Select date</h3>
+      <div class="seg">
+        <button type="button" class="b" id="dpa">AD (Gregorian)</button
+        ><button type="button" class="b" id="dpb">BS (Bikram Sambat)</button>
+      </div>
+      <div class="wh">
+        <div class="wc" id="wy"></div>
+        <div class="wc" id="wm"></div>
+        <div class="wc" id="wd"></div>
+        <div class="wb"></div>
+      </div>
+      <p id="dpv" class="mu"></p>
+      <p class="mu">
+        <small
+          >Scroll each column, or tap a value. Pick either calendar – the other date is filled in
+          automatically.</small
+        >
+      </p>
+      <div class="bar">
+        <button type="button" class="b" id="dpt">Today</button
+        ><button type="button" class="b" id="dpc">Clear</button
+        ><button type="button" class="b p" id="dps">Set date</button
+        ><button type="button" class="b" id="dpx">Cancel</button>
+      </div>
+    </dialog>
+    <dialog id="nd">
+      <h3>Create new case</h3>
+      <p class="mu">Choose the claim type. The data-entry sections follow your choice.</p>
+      <div class="ty">
+        <label class="tc"
+          ><span><input type="radio" name="ty" value="motor" checked /><b>🚗 Motor</b></span
+          ><small class="mu">Vehicle accident, theft, fire, third-party liability</small></label
+        ><label class="tc"
+          ><span><input type="radio" name="ty" value="property" /><b>🏠 Property</b></span
+          ><small class="mu">Fire, flood, burglary, building, stock, machinery</small></label
+        >
+      </div>
+      <div class="grid">
+        <div class="fld">
+          <label>Claim no. (optional)</label><input id="nc" placeholder="Any format" />
+        </div>
+        <div class="fld"><label>Next follow-up (optional)</label><input id="nf" type="date" /></div>
+      </div>
+      <p id="nm" class="er"></p>
+      <div class="bar">
+        <button class="b p" id="nk">Create case</button><button class="b" id="nq">Cancel</button>
+      </div>
+    </dialog>
+    <dialog id="dlg">
+      <h3>Export / import case data</h3>
+      <textarea id="dt" rows="12"></textarea>
+      <p id="dm" class="er"></p>
+      <div class="bar">
+        <button class="b" id="dc">Copy</button
+        ><button class="b p" id="di">Import as new case</button
+        ><button class="b" id="dq">Close</button>
+      </div>
+    </dialog>
+
+    <!-- Libraries (local copies in /vendor; see vendor/README.txt for CDN equivalents) -->
+    <script src="vendor/html2pdf.bundle.min.js"></script>
+    <script src="vendor/docx.umd.js"></script>
+
+    <!-- Platform shim: file downloads + optional AI hook when NOT running inside claude.ai -->
+    <script src="js/platform.js"></script>
+    <script src="js/ai-config.js"></script>
+
+    <!-- Application scripts (classic scripts, order matters) -->
+    <script src="js/01-core.js"></script>
+    <script src="js/02-schema-motor.js"></script>
+    <script src="js/03-state-validation.js"></script>
+    <script src="js/04-rules-and-nav.js"></script>
+    <script src="js/05-form-fields.js"></script>
+    <script src="js/06-data-review.js"></script>
+    <script src="js/07-photos.js"></script>
+    <script src="js/08-case-actions.js"></script>
+    <script src="js/09-module-property.js"></script>
+    <script src="js/10-bills-final-report.js"></script>
+    <script src="js/11-dashboard.js"></script>
+    <script src="js/12-date-picker-bs.js"></script>
+    <script src="js/13-report-layout-helpers.js"></script>
+    <script src="js/14-app-shell.js"></script>
+    <script src="js/15-fonts-lmroman.js"></script>
+    <script src="js/16-export-docx-md.js"></script>
+    <script src="js/17-report-paginate.js"></script>
+    <script src="js/18-bills-ui.js"></script>
+    <script src="js/19-property-assessment.js"></script>
+    <script src="js/99-main.js"></script>
+  </body>
+</html>

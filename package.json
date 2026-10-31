@@ -1,0 +1,20 @@
+{
+  "name": "survey-desk",
+  "version": "1.0.0",
+  "description": "Insurance claim survey desk: motor and property surveys, dashboard, reports (PDF / Word / Markdown).",
+  "private": true,
+  "scripts": {
+    "start": "npx http-server . -p 4173 -a 0.0.0.0 -c-1 -o",
+    "start:ai": "node server.js",
+    "test": "python tests/smoke_test.py",
+    "format": "prettier --write \"js/*.js\" css/styles.css index.html"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.0"
+  }
+}
