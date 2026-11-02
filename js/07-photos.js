@@ -88,12 +88,19 @@ function photosUI(m) {
     }),
     nmx = h('input', { type: 'checkbox', id: 'nmx' }),
     fi = h('input', { type: 'file', accept: 'image/*', multiple: 'multiple' }),
+    fiOne = h('input', { type: 'file', accept: 'image/*', capture: 'environment' }),
     dz = h(
       'div',
       { class: 'dz' },
       'Drag & drop photos here, or click to choose (bulk upload supported)'
     ),
-    list = h('div');
+    list = h('div'),
+    quick = h(
+      'div',
+      { class: 'bar', style: 'margin-top:8px;margin-bottom:0;flex-wrap:wrap' },
+      h('button', { class: 'b', type: 'button', onclick: () => fiOne.click() }, 'Add one photo'),
+      h('button', { class: 'b', type: 'button', onclick: () => fi.click() }, 'Bulk upload')
+    );
   const save = async (p) => {
     try {
       await put(p);
@@ -214,7 +221,8 @@ function photosUI(m) {
       const preview = h('img', {
         src: it.img,
         alt: '',
-        style: 'width:100%;height:110px;object-fit:cover;border-radius:8px;border:1px solid var(--bd);',
+        style:
+          'width:100%;height:110px;object-fit:cover;border-radius:8px;border:1px solid var(--bd);',
       });
       const form = h('div', { style: 'display:grid;gap:8px;' });
       const title = h('div', { class: 'mu' }, `${idx + 1}. ${it.name || 'Photo'}`);
@@ -317,23 +325,32 @@ function photosUI(m) {
       return;
     }
 
-    msg.textContent =
-      bad
-        ? `${bad} skipped (not a supported image, over 20 MB, or browser storage unavailable)`
-        : 'No photos were added.';
+    msg.textContent = bad
+      ? `${bad} skipped (not a supported image, over 20 MB, or browser storage unavailable)`
+      : 'No photos were added.';
   };
   fi.onchange = () =>
     up(fi.files).then(() => {
       fi.value = '';
     });
-  dz.onclick = () => fi.click();
-  dz.ondragover = (e) => {
+  fiOne.onchange = () =>
+    up(fiOne.files).then(() => {
+      fiOne.value = '';
+    });
+  const dragStop = (e) => {
     e.preventDefault();
+    e.stopPropagation();
+  };
+
+  dz.onclick = () => fi.click();
+  dz.ondragenter = dragStop;
+  dz.ondragover = (e) => {
+    dragStop(e);
     dz.classList.add('on');
   };
   dz.ondragleave = () => dz.classList.remove('on');
   dz.ondrop = (e) => {
-    e.preventDefault();
+    dragStop(e);
     dz.classList.remove('on');
     up(e.dataTransfer.files);
   };
@@ -345,7 +362,7 @@ function photosUI(m) {
       h(
         'p',
         { class: 'mu' },
-        'Choose a category and add one or many images (JPG, PNG, WebP). Captions are optional: set one for the whole batch, use file names, or edit each photo afterwards. Each category becomes a numbered annex in the report. Workshop estimates must be uploaded as images (PDFs cannot be embedded). Photos stay in this browser and are not part of the JSON export.'
+        'Choose a category and add one or many images (JPG, PNG, WebP). Captions are optional: set one for the whole batch, use file names, or edit each photo afterwards before it is used in the report. Each category becomes a numbered annex in the report. Workshop estimates must be uploaded as images (PDFs cannot be embedded). Photos stay in this browser and are not part of the JSON export.'
       ),
       h(
         'div',
@@ -360,7 +377,9 @@ function photosUI(m) {
         )
       ),
       dz,
+      quick,
       fi,
+      fiOne,
       msg
     ),
     list

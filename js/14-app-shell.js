@@ -203,7 +203,10 @@ $('#cs').onchange = (e) => {
   render();
 };
 
-$('#nw').onclick = openNew;
+$('#nw').onclick = () => {
+  openNew();
+  closeSideMenu();
+};
 
 $('#db').onclick = () => {
   FL.k = '';
@@ -211,16 +214,67 @@ $('#db').onclick = () => {
   FL.q = '';
   showDash();
   setMenu('db');
+  closeSideMenu();
 };
 
 $('#mc').onclick = () => {
   showAllCases();
   setMenu('mc');
+  closeSideMenu();
+};
+
+$('#profile-btn').onclick = () => {
+  if (typeof showProfilePage === 'function') {
+    showProfilePage('profile');
+    setMenu('profile-btn');
+  }
+  closeSideMenu();
+};
+
+$('#account-btn').onclick = () => {
+  if (typeof showProfilePage === 'function') {
+    showProfilePage('account');
+    setMenu('account-btn');
+  }
+  closeSideMenu();
+};
+
+$('#security-btn').onclick = () => {
+  if (typeof showProfilePage === 'function') {
+    showProfilePage('security');
+    setMenu('security-btn');
+  }
+  closeSideMenu();
+};
+
+$('#activity-btn').onclick = () => {
+  if (typeof showProfilePage === 'function') {
+    showProfilePage('activity');
+    setMenu('activity-btn');
+  }
+  closeSideMenu();
+};
+
+$('#user-admin-btn').onclick = () => {
+  if (typeof showProfilePage === 'function') {
+    showProfilePage('admin-users');
+    setMenu('user-admin-btn');
+  }
+  closeSideMenu();
+};
+
+$('#audit-btn').onclick = () => {
+  if (typeof showProfilePage === 'function') {
+    showProfilePage('admin-audit');
+    setMenu('audit-btn');
+  }
+  closeSideMenu();
 };
 
 $('#ms').onclick = () => {
   showDash();
   setMenu('ms');
+  closeSideMenu();
   setTimeout(() => {
     const d = document.querySelector('#dash details');
     if (d) {
@@ -232,10 +286,43 @@ $('#ms').onclick = () => {
 
 $('#mi').onclick = () => {
   impOpen();
-  $('#side').classList.remove('open');
+  closeSideMenu();
 };
 
-$('#hb').onclick = () => $('#side').classList.toggle('open');
+function setSideMenuOpen(open) {
+  const side = $('#side');
+  const backdrop = document.getElementById('menu-backdrop');
+  if (!side) return;
+  side.classList.toggle('open', !!open);
+  if (backdrop) {
+    backdrop.hidden = !open;
+    backdrop.setAttribute('aria-hidden', String(!open));
+  }
+}
+
+function closeSideMenu() {
+  setSideMenuOpen(false);
+}
+
+$('#hb').onclick = (e) => {
+  e.stopPropagation();
+  const side = $('#side');
+  if (!side) return;
+  setSideMenuOpen(!side.classList.contains('open'));
+};
+
+document.getElementById('menu-backdrop')?.addEventListener('click', closeSideMenu);
+document.addEventListener('click', (event) => {
+  const side = $('#side');
+  const hb = $('#hb');
+  if (!side || !side.classList.contains('open')) return;
+  const insideMenu = side.contains(event.target);
+  const insideToggle = hb && hb.contains(event.target);
+  if (!insideMenu && !insideToggle) closeSideMenu();
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') closeSideMenu();
+});
 
 let dc = 0;
 
@@ -288,32 +375,28 @@ $('#di').onclick = () => {
     });
     ['a', 'b', 'ra', 'rb'].forEach((q) => {
       const rows = Array.isArray(c.b && c.b[q])
-        ? c.b[q]
-            .slice(0, 200)
-            .map((r) =>
-              r.rows
-                ? {
-                    no: String(r.no ?? '').slice(0, 60),
-                    date: String(r.date ?? '').slice(0, 10),
-                    vendor: String(r.vendor ?? '').slice(0, 120),
-                    rows: (Array.isArray(r.rows) ? r.rows : [])
-                      .slice(0, 300)
-                      .map((x) => ({
-                        d: String(x.d ?? '').slice(0, 160),
-                        qty: String(x.qty ?? '').slice(0, 20),
-                        rate: String(x.rate ?? '').slice(0, 20),
-                        amt: String(x.amt ?? '').slice(0, 20),
-                        as: String(x.as ?? '').slice(0, 20),
-                        rm: String(x.rm ?? '').slice(0, 160),
-                      })),
-                  }
-                : {
-                    no: String(r.no ?? '').slice(0, 60),
-                    d: String(r.d ?? '').slice(0, 120),
-                    amt: String(r.amt ?? '').slice(0, 20),
-                    as: String(r.as ?? '').slice(0, 20),
-                  }
-            )
+        ? c.b[q].slice(0, 200).map((r) =>
+            r.rows
+              ? {
+                  no: String(r.no ?? '').slice(0, 60),
+                  date: String(r.date ?? '').slice(0, 10),
+                  vendor: String(r.vendor ?? '').slice(0, 120),
+                  rows: (Array.isArray(r.rows) ? r.rows : []).slice(0, 300).map((x) => ({
+                    d: String(x.d ?? '').slice(0, 160),
+                    qty: String(x.qty ?? '').slice(0, 20),
+                    rate: String(x.rate ?? '').slice(0, 20),
+                    amt: String(x.amt ?? '').slice(0, 20),
+                    as: String(x.as ?? '').slice(0, 20),
+                    rm: String(x.rm ?? '').slice(0, 160),
+                  })),
+                }
+              : {
+                  no: String(r.no ?? '').slice(0, 60),
+                  d: String(r.d ?? '').slice(0, 120),
+                  amt: String(r.amt ?? '').slice(0, 20),
+                  as: String(r.as ?? '').slice(0, 20),
+                }
+          )
         : [];
       if (rows.length) n.b[q] = rows;
     });
@@ -322,12 +405,10 @@ $('#di').onclick = () => {
         .slice(0, 30)
         .forEach((k) => {
           if (Array.isArray(c.x[k]))
-            n.x[k] = c.x[k]
-              .slice(0, 50)
-              .map((r) => ({
-                l: String(r.l ?? '').slice(0, 80),
-                v: String(r.v ?? '').slice(0, 500),
-              }));
+            n.x[k] = c.x[k].slice(0, 50).map((r) => ({
+              l: String(r.l ?? '').slice(0, 80),
+              v: String(r.v ?? '').slice(0, 500),
+            }));
         });
     const mid = o.module || c.mod;
     if (STG.includes(c.st) || OLDMAP[c.st]) n.st = STG.includes(c.st) ? c.st : OLDMAP[c.st];

@@ -1,0 +1,44 @@
+<svg width="640" height="420" viewBox="0 0 640 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="shieldGradient" x1="90" y1="30" x2="530" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1CC7D6"/>
+      <stop offset="0.5" stop-color="#0D9AC9"/>
+      <stop offset="1" stop-color="#0A5BA1"/>
+    </linearGradient>
+    <linearGradient id="panelGradient" x1="110" y1="70" x2="470" y2="340" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F0F5F8"/>
+      <stop offset="1" stop-color="#DDEAF4"/>
+    </linearGradient>
+    <linearGradient id="checkGrad" x1="140" y1="105" x2="455" y2="260" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4FBFF"/>
+      <stop offset="1" stop-color="#D7EEF8"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M320 26L492 85C492 214 440 298 320 357C200 298 148 214 148 85L320 26Z" fill="url(#shieldGradient)"/>
+  <path d="M320 54L463 101C463 209 420 280 320 332C220 280 177 209 177 101L320 54Z" fill="#EAF3F8" fill-opacity="0.75"/>
+
+  <path d="M220 180C248 125 291 96 320 96C346 96 391 124 420 179L470 130C433 70 386 38 320 38C254 38 207 70 170 130L220 180Z" fill="url(#shieldGradient)" opacity="0.9"/>
+
+  <path d="M220 180L265 180V240L320 292L375 240V180H420L420 255L320 344L220 255V180Z" fill="url(#panelGradient)"/>
+
+  <path d="M257 200L288 230L337 180L380 180L309 251L257 200Z" fill="url(#checkGrad)"/>
+
+  <path d="M310 130L356 177H293L310 130Z" fill="#EAF3F8" opacity="0.35"/>
+  <path d="M356 177L310 130L320 99L386 173L356 177Z" fill="#6AD3E4" opacity="0.7"/>
+
+  <g opacity="0.95">
+    <path d="M234 144L257 130L269 147L246 161L234 144Z" fill="#F2F7FA"/>
+    <path d="M356 90L379 104L357 122L334 108L356 90Z" fill="#F2F7FA"/>
+    <path d="M413 181L429 170L445 178L430 196L413 181Z" fill="#F2F7FA"/>
+    <path d="M264 239L278 220L295 235L281 254L264 239Z" fill="#F2F7FA"/>
+  </g>
+
+  <g opacity="0.9">
+    <path d="M320 75L332 104L362 104L337 122L346 151L320 133L294 151L303 122L278 104L308 104L320 75Z" fill="#F5FAFF"/>
+  </g>
+
+  <g>
+    <text x="320" y="405" text-anchor="middle" font-family="Arial, sans-serif" font-size="72" font-weight="700" fill="#0C5FA4" letter-spacing="-2">Survey Desk</text>
+  </g>
+</svg>

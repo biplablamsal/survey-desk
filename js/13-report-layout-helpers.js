@@ -24,7 +24,10 @@ const RL = [
     ['.cap', 'font-size:9pt;text-align:center;margin:2px 0 6px'],
     ['.ai', 'font-size:9pt;color:#444;margin:0 0 8px'],
     ['.pb', 'page-break-before:always'],
-    ['.report-footer', 'position:absolute;left:0;right:0;bottom:0;border-top:1px solid #000;padding:8px 12px 4px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;font-size:8pt;color:#444;background:linear-gradient(to top, rgba(255,255,255,0.94), rgba(255,255,255,0.7));'],
+    [
+      '.report-footer',
+      'position:absolute;left:0;right:0;bottom:0;border-top:1px solid #000;padding:8px 12px 4px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;font-size:8pt;color:#444;background:linear-gradient(to top, rgba(255,255,255,0.94), rgba(255,255,255,0.7));',
+    ],
     ['.report-footer .rf-left', 'display:flex;align-items:flex-end;gap:10px;'],
     ['.report-footer .rf-right', 'text-align:right;line-height:1.3;'],
     ['img', 'max-width:100%'],

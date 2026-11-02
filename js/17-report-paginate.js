@@ -32,17 +32,23 @@ async function docBuild(kind, body, anx, nums) {
     stp = await getA('stp'),
     secs = secBody(body),
     ann = anx ? await annexBlocks() : [],
-    PHT = 1010;
+    PHT = 1120,
+    A4_MM = { w: 210, h: 297 };
   const el = h('div', { class: 'dc' });
-  el.style.cssText = 'position:fixed;left:-10000px;top:0;width:165mm';
+  el.style.cssText =
+    'position:fixed;left:-10000px;top:0;width:' + A4_MM.w + 'mm;min-height:' + A4_MM.h + 'mm';
   el.innerHTML = '<style>' + dcss('.dc ') + '</style>';
   document.body.append(el);
   const wr = document.createElement('div');
   wr.innerHTML = await coverHTML(kind, sig, stp);
   el.append(wr.firstElementChild);
   const footerHtml = () => {
-    const sg = sig ? `<img src='${sig}' alt='' style='max-width:150px;max-height:60px;object-fit:contain;'>` : '';
-    const st = stp ? `<img src='${stp}' alt='' style='max-width:90px;max-height:90px;object-fit:contain;'>` : '';
+    const sg = sig
+      ? `<img src='${sig}' alt='' style='max-width:150px;max-height:60px;object-fit:contain;'>`
+      : '';
+    const st = stp
+      ? `<img src='${stp}' alt='' style='max-width:90px;max-height:90px;object-fit:contain;'>`
+      : '';
     return `<div class='report-footer'><div class='rf-left'>${sg}${st}</div><div class='rf-right'><div>${esc(g('case_surveyor') || 'Licensed Surveyor')}</div><div>${esc(g('case_lic') ? 'Licence no. ' + g('case_lic') : 'Surveyor')}</div></div></div>`;
   };
   const mk = () => {

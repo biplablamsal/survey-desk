@@ -4,6 +4,7 @@ Web app for insurance claim surveyors (Nepal context): **motor** and **property*
 Plain HTML + CSS + JavaScript. **No build step, no framework, no server needed.**
 
 ## Features
+
 - **Dashboard**: KPI cards, 11-stage settlement workflow, report deadline monitor (preliminary 15 days, final 60 days), action-required table, recent cases, role-based view (Admin / Principal Surveyor / Staff).
 - **Case forms** driven by a schema: validation, cross-field checks, auto-fill of repeated data, green tick on filled fields, AD/BS scrolling date picker, AM/PM time, multi-select licence categories, "third party involved" switch.
 - **Bills & expenses**: one Excel-style table per invoice (paste from Excel, Enter adds a row), claim vs assessed amounts, final calculation.
@@ -12,14 +13,16 @@ Plain HTML + CSS + JavaScript. **No build step, no framework, no server needed.*
 - **Reports**: Preliminary and Final. AI draft (optional) or data-based draft, editable text, save. Export **PDF**, **Word (.docx)**, **Markdown**. Cover page, contents, disclaimer, continuous body, annexes, 3 cm binding margin, LM Roman 10 font.
 
 ## Run it
+
 Any static web server works (the app uses `localStorage` and `IndexedDB`, so open it over `http://`, not by double-clicking the file).
 
-**VS Code**: install the *Live Server* extension, right-click `index.html` → *Open with Live Server*.
+**VS Code**: install the _Live Server_ extension, right-click `index.html` → _Open with Live Server_.
 **Terminal**: `npm start` (uses `http-server`) or `python -m http.server 4173` then open http://localhost:4173
 
-All data stays in your browser (see *Data storage*).
+All data stays in your browser (see _Data storage_).
 
 ## Project layout
+
 ```
 index.html                 page markup (sidebar, dialogs) + ordered <script> tags
 css/styles.css             all styles (app UI + report/preview styles)
@@ -49,11 +52,13 @@ vendor/                    html2pdf.js and docx (local copies)
 samples/                   sample cases: use "Import case" on the dashboard
 tests/smoke_test.py        headless-browser test of the three export formats
 ```
+
 **Scripts are classic scripts sharing one global scope.** Keep the `<script>` order in `index.html`.
-A function declared in a *later* file is not visible to code that runs *at load time* in an earlier file
+A function declared in a _later_ file is not visible to code that runs _at load time_ in an earlier file
 (that is why `MODS.motor` uses `X: () => X()` wrappers). Code that runs later (event handlers) can call anything.
 
 ## Key concepts
+
 **Case record** (`DB[id]`, saved as JSON): `{ id, mod:'motor'|'property', st (workflow stage), asg (intimation date), due, pSub, fSub, owner, hist[], f:{ 'section_field': 'value' }, b:{ra,rb,a,b: [invoice…]}, pa (property assessment), rep:{prelim,final} , x (custom fields) }`.
 Dates are stored as AD `YYYY-MM-DD`; BS is computed for display.
 
@@ -63,7 +68,7 @@ Dates are stored as AD `YYYY-MM-DD`; BS is computed for display.
 
 **Modules**: `MODS = { motor:{ SECS, FM, ALL, X, narr, concl, links… }, property:{…} }`. To add a module
 (e.g. engineering/marine): write its schema like `PS` in `09-module-property.js`, call `norm()`, register it in
-`MODS`, add it to the *New case* dialog in `index.html`, and add `links` for auto-fill.
+`MODS`, add it to the _New case_ dialog in `index.html`, and add `links` for auto-fill.
 
 **Auto-fill**: `MOD.links = [[target, source…]]`; a target is filled only if empty or still holding its previous auto value.
 
@@ -72,21 +77,24 @@ rendered with html2canvas), Word (`docxBuild()` with the `docx` library), Markdo
 Property loss-assessment tables are appended by `secBody()` at export time.
 
 **Data storage** (browser only): `localStorage` keys `sp.db` (all cases), `sp.cur`, `sp.cfg` (settings, roles, deadlines, disclaimer);
-`IndexedDB` database `sp-photos` (photos, signature, stamp). Use *Export / import this case* to back up (photos are not included in the JSON).
+`IndexedDB` database `sp-photos` (photos, signature, stamp). Use _Export / import this case_ to back up (photos are not included in the JSON).
 Clearing browser data deletes everything.
 
 ## Optional: AI report drafting
+
 `window.claude` does not exist outside claude.ai, so AI drafting is off by default; everything else works.
 To enable it, run your own backend that calls the Anthropic API (keep the API key on the server) and set
 `window.SURVEY_AI_ENDPOINT` in `js/ai-config.js`. The contract is documented in that file.
 
 ## Tests
+
 `pip install playwright && playwright install chromium`, then `python tests/smoke_test.py` — creates a motor and a property
 case, exports PDF/DOCX/MD and checks the files.
 
 ## Known limitations
+
 - Roles (Admin / Principal Surveyor / Staff) only change what is shown on this device. Real access control needs a login and a backend.
 - No multi-user sync; data lives in one browser.
-- Word contents page: page numbers fill in when Word updates the field (answer *Yes* when Word asks).
+- Word contents page: page numbers fill in when Word updates the field (answer _Yes_ when Word asks).
 - LM Roman 10 is embedded for the PDF; in Word the font name is set, but it only displays if installed on that PC.
 - BS conversion covers BS 2000–2090.

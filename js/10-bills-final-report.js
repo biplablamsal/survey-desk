@@ -235,7 +235,11 @@ function genUI(m, kind) {
       ed.innerHTML = clean(r.text);
       sd();
       msg.textContent =
-        'Generated and saved — ' + words + ' words at ' + new Date().toLocaleTimeString() + '. Review and edit before exporting.';
+        'Generated and saved — ' +
+        words +
+        ' words at ' +
+        new Date().toLocaleTimeString() +
+        '. Review and edit before exporting.';
     } catch (e) {
       msg.textContent =
         'AI generation failed' +

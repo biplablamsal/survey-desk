@@ -4,15 +4,26 @@
   "description": "Insurance claim survey desk: motor and property surveys, dashboard, reports (PDF / Word / Markdown).",
   "private": true,
   "scripts": {
-    "start": "npx http-server . -p 4173 -a 0.0.0.0 -c-1 -o",
+    "start": "node server.js",
     "start:ai": "node server.js",
+    "db:migrate": "node db/migrate.js",
     "test": "python tests/smoke_test.py",
     "format": "prettier --write \"js/*.js\" css/styles.css index.html"
   },
   "dependencies": {
+    "argon2": "^0.45.1",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "csurf": "^1.11.0",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.7.2",
+    "google-auth-library": "^11.3.2",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.16",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "prettier": "^3.3.0"

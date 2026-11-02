@@ -360,13 +360,19 @@ async function docxBuild(kind, body, anx) {
     },
     sections: [
       {
-        properties: { page: { margin: { top: 1134, bottom: 1134, left: 1701, right: 850 } } },
+        properties: {
+          page: {
+            size: { width: 11906, height: 16838 },
+            margin: { top: 720, bottom: 720, left: 720, right: 720 },
+          },
+        },
         children: cover,
       },
       {
         properties: {
           page: {
-            margin: { top: 1134, bottom: 1134, left: 1701, right: 850 },
+            size: { width: 11906, height: 16838 },
+            margin: { top: 720, bottom: 720, left: 720, right: 720 },
             pageNumbers: { start: 1, formatType: D.NumberFormat.DECIMAL },
           },
         },
@@ -386,7 +392,11 @@ async function docxBuild(kind, body, anx) {
                 alignment: C,
                 children: [
                   new R({ text: g('case_surveyor') || 'Licensed Surveyor', bold: true, size: 18 }),
-                  new R({ text: g('case_lic') ? ' · Licence no. ' + g('case_lic') : '', size: 18, break: 1 }),
+                  new R({
+                    text: g('case_lic') ? ' · Licence no. ' + g('case_lic') : '',
+                    size: 18,
+                    break: 1,
+                  }),
                 ],
               }),
             ],
@@ -572,9 +582,9 @@ async function doExport(kind, ed, fm, msg) {
       const sc = 1.5,
         sty = '<style>' + dcss('.dc ') + '</style>',
         opt = {
-          margin: [10, 30, 10, 15],
+          margin: [8, 12, 8, 12],
           image: { type: 'jpeg', quality: 0.9 },
-          jsPDF: { unit: 'mm', format: 'a4' },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         };
       let pdf = null,
         done = 0;
@@ -584,7 +594,7 @@ async function doExport(kind, ed, fm, msg) {
       for (const blk of blocks) {
         msg.textContent = 'Rendering section ' + ++done + ' of ' + blocks.length + '…';
         const w = h('div', { class: 'dc' });
-        w.style.cssText = 'width:165mm;background:#fff';
+        w.style.cssText = 'width:210mm;min-height:297mm;background:#fff';
         w.innerHTML =
           sty +
           '<style>.dc .pb{page-break-before:auto!important;break-before:auto!important}</style>' +
@@ -593,14 +603,14 @@ async function doExport(kind, ed, fm, msg) {
         await new Promise((r) => setTimeout(r, 40));
         const cv = await html2pdf()
             .set({
-              margin: [10, 30, 10, 15],
+              margin: [8, 12, 8, 12],
               html2canvas: { scale: sc, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0 },
             })
             .from(w)
             .toCanvas()
             .get('canvas'),
           pw = cv.width,
-          sl = Math.round((pw * 277) / 165),
+          sl = Math.round((pw * 297) / 210),
           HH = Math.min(cv.height, Math.round(w.offsetHeight * sc)),
           fit = blk.dataset.fit === '1',
           n = fit ? 1 : Math.max(1, Math.ceil((HH - 3 * sc) / sl));
@@ -616,20 +626,13 @@ async function doExport(kind, ed, fm, msg) {
           else {
             pdf.addPage();
             {
-              let wm = 165,
-                hm = (c2.height * 165) / pw;
-              if (hm > 277) {
-                wm = (165 * 277) / hm;
-                hm = 277;
+              let wm = 210,
+                hm = (c2.height * 210) / pw;
+              if (hm > 297) {
+                wm = (210 * 297) / hm;
+                hm = 297;
               }
-              pdf.addImage(
-                c2.toDataURL('image/jpeg', 0.9),
-                'JPEG',
-                30 + (165 - wm) / 2,
-                10,
-                wm,
-                hm
-              );
+              pdf.addImage(c2.toDataURL('image/jpeg', 0.9), 'JPEG', 5 + (210 - wm) / 2, 10, wm, hm);
             }
           }
         }

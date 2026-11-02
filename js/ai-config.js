@@ -18,8 +18,21 @@ window.SURVEY_AI_ENDPOINT = `http://${aiHost}:3000/api/generate`;
 window.SURVEY_AI_MODEL = 'gemini-3.8-flash';
 window.SURVEY_AI_API_KEY = ''; // backend is preferred for live web use
 
+function getSurveyAuthToken() {
+  try {
+    const raw = localStorage.getItem('survey-desk-auth');
+    if (!raw) return '';
+    const parsed = JSON.parse(raw);
+    return parsed && parsed.token ? parsed.token : '';
+  } catch {
+    return '';
+  }
+}
+
 function normalizeGeminiModel(model) {
-  const raw = String(model || 'gemini-3.8-flash').trim().replace(/^models\//i, '');
+  const raw = String(model || 'gemini-3.8-flash')
+    .trim()
+    .replace(/^models\//i, '');
   const legacyMap = {
     'gemini-2.0-flash': 'gemini-3.8-flash',
     'gemini-2.5-flash': 'gemini-3.8-flash',
@@ -32,22 +45,33 @@ function normalizeGeminiModel(model) {
 function extractGeminiText(data) {
   const candidates = data && data.candidates;
   if (!Array.isArray(candidates) || !candidates.length) return '';
-  const parts = candidates[0].content && Array.isArray(candidates[0].content.parts)
-    ? candidates[0].content.parts
-    : [];
-  return parts.map((p) => p && p.text ? p.text : '').join('');
+  const parts =
+    candidates[0].content && Array.isArray(candidates[0].content.parts)
+      ? candidates[0].content.parts
+      : [];
+  return parts.map((p) => (p && p.text ? p.text : '')).join('');
 }
 
 if (window.SURVEY_AI_ENDPOINT) {
   window.SURVEY_AI = async (prompt, opts = {}) => {
+    const token = getSurveyAuthToken();
     const r = await fetch(window.SURVEY_AI_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, model: normalizeGeminiModel(window.SURVEY_AI_MODEL || 'gemini-3.8-flash') }),
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        prompt,
+        model: normalizeGeminiModel(window.SURVEY_AI_MODEL || 'gemini-3.8-flash'),
+      }),
     });
     if (!r.ok) throw Object.assign(new Error('AI request failed'), { code: 'http_' + r.status });
     const payload = await r.json();
-    const text = payload && typeof payload.text === 'string' ? payload.text : payload && payload.output || '';
+    const text =
+      payload && typeof payload.text === 'string'
+        ? payload.text
+        : (payload && payload.output) || '';
     if (!text) throw Object.assign(new Error('AI response was empty'), { code: 'empty_response' });
     if (opts.onText) opts.onText({ text });
     return { text };
@@ -66,13 +90,17 @@ if (window.SURVEY_AI_ENDPOINT) {
     });
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
-      throw Object.assign(new Error(err.error && err.error.message ? err.error.message : 'AI request failed'), {
-        code: 'http_' + r.status,
-      });
+      throw Object.assign(
+        new Error(err.error && err.error.message ? err.error.message : 'AI request failed'),
+        {
+          code: 'http_' + r.status,
+        }
+      );
     }
     const data = await r.json();
     const text = extractGeminiText(data);
-    if (!text) throw Object.assign(new Error('Gemini returned no text'), { code: 'empty_response' });
+    if (!text)
+      throw Object.assign(new Error('Gemini returned no text'), { code: 'empty_response' });
     if (opts.onText) opts.onText({ text });
     return { text };
   };

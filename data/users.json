@@ -1,0 +1,166 @@
+[
+  {
+    "id": "1ae46376-f20b-474a-8819-deac28b9ba2c",
+    "name": "demo.user",
+    "email": "demo.user@gmail.com",
+    "password": "$2a$12$jmFqUIzaZRi.nolDMxcTFO8bol0E2gE7lmfnV6QDuPDYFGT2Dom3e",
+    "provider": "email",
+    "createdAt": "2026-11-01T10:50:43.838Z",
+    "lastLogin": "2026-11-01T10:50:44.941Z"
+  },
+  {
+    "id": "f84ab4e7-9cd6-4788-81fd-c7c0ff261684",
+    "name": "demo.user2",
+    "email": "demo.user2@gmail.com",
+    "password": "$2a$12$paJme9p/K3XNB92CiedI5.Ry1fSH8Cd.3TuN05cyXoqoxsgp3P8My",
+    "provider": "email",
+    "createdAt": "2026-11-01T10:53:10.599Z",
+    "lastLogin": "2026-11-01T10:53:11.595Z"
+  },
+  {
+    "id": "601816cc-24ba-4304-b2c5-a2245cf7a193",
+    "name": "demo.user3",
+    "email": "demo.user3@gmail.com",
+    "password": "$2a$12$gKVp3vwNzuozVRIa.9vKvOsWc2rrm8Mw/HuzoeQFYBMlpIc8Wxn4a",
+    "provider": "email",
+    "createdAt": "2026-11-01T10:53:25.281Z",
+    "lastLogin": "2026-11-01T10:53:26.242Z"
+  },
+  {
+    "id": "86da60e8-243d-49d6-af2b-1b414498c496",
+    "name": "Gmail User",
+    "email": "gmail.user@gmail.com",
+    "password": "$2a$12$/PwqOwJrAhKJaeffra2iWutvRaJt1uG.8z0D1Q8qBlsTjBDgC7V6K",
+    "provider": "google",
+    "createdAt": "2026-11-01T10:53:50.000Z",
+    "lastLogin": "2026-11-01T10:53:50.001Z"
+  },
+  {
+    "id": "6fc22e25-e989-4aa4-9400-84c19bfdd0a7",
+    "name": "lamsalbiplab",
+    "email": "lamsalbiplab@gmail.com",
+    "password": "$2a$12$OiR7R1MwxiMQ4jJxKrs1b..SwvGj6vlj4J6pO6gmtzQiMldFpXffu",
+    "provider": "email",
+    "createdAt": "2026-11-01T12:07:49.233Z",
+    "lastLogin": "2026-11-01T12:07:49.233Z"
+  },
+  {
+    "id": "2e3cf1b8-01e5-4242-88e2-8f807dd7602e",
+    "name": "logout.check",
+    "email": "logout.check@gmail.com",
+    "password": "$2a$12$qXw7Q7M3HnOXsguh2hYmFu8P96YIxwl6fbv6LJL1VqANSj2dKi7By",
+    "provider": "email",
+    "createdAt": "2026-11-01T12:10:36.391Z",
+    "lastLogin": "2026-11-01T12:10:36.391Z"
+  },
+  {
+    "id": "d19d469e-63b0-42b0-96aa-280c71cec411",
+    "name": "UI Test User",
+    "email": "user447fbe32@gmail.com",
+    "password": "$2a$12$OcuVdxvxHO20Y5NoE36RHuDSWWb3hnbPnO1EeqLNuAF2fTfjB1eJ6",
+    "provider": "email",
+    "createdAt": "2026-11-01T12:17:54.825Z",
+    "lastLogin": "2026-11-01T12:17:54.825Z"
+  },
+  {
+    "id": "fdd6f0bf-a9ef-45e2-9a78-10b403560a53",
+    "name": "UI Test User",
+    "email": "user91086d65@gmail.com",
+    "password": "$2a$12$6BtxhDKkL6IctbWss2RcBeCT4gdpM252vsjHO34O0XQa/WnFHUJEe",
+    "provider": "email",
+    "createdAt": "2026-11-01T12:18:06.646Z",
+    "lastLogin": "2026-11-01T12:18:06.646Z"
+  },
+  {
+    "id": "e874c795-c06c-40d6-9671-74e9746f3470",
+    "name": "UI Test User",
+    "email": "user453eac5b@gmail.com",
+    "password": "$2a$12$/wpZBJM.ZOXklDFPmH.PGO5gIWkiG3naI7/iw13w.2lk8PB89vx2a",
+    "provider": "email",
+    "createdAt": "2026-11-01T12:18:17.734Z",
+    "lastLogin": "2026-11-01T12:18:17.734Z"
+  },
+  {
+    "id": "67030b40-101f-4e3f-afe2-3d42977e9e79",
+    "name": "UI Test User",
+    "email": "userae0b5921@gmail.com",
+    "password": "$2a$12$Z0hWe9m7ped2f8qUFqkF0.xDRP2.r8NpQDsiv7zhdUJAP495zPt/y",
+    "provider": "email",
+    "createdAt": "2026-11-01T12:18:27.796Z",
+    "lastLogin": "2026-11-01T12:18:27.796Z"
+  },
+  {
+    "id": "54b3e911-53f4-41ec-8422-4f9d2d362638",
+    "name": "UI Test User",
+    "email": "userffa992e3@gmail.com",
+    "password": "$2a$12$NRYNdWvWtOjUUPIb2NTl.uqDWE5K0OAZ31q5RO8G/QBQqainsLeTq",
+    "provider": "email",
+    "createdAt": "2026-11-01T12:18:39.497Z",
+    "lastLogin": "2026-11-01T12:18:39.497Z"
+  },
+  {
+    "id": "5c9421c0-9088-4cb0-9b7c-fe29d9145921",
+    "name": "UI Test User",
+    "email": "userbcc09199@gmail.com",
+    "password": "$2a$12$iahIAPsz0By3wIOxGAPjQekgv/Kjl1xjzf40xQQg9r1KXhGQcRwyi",
+    "provider": "email",
+    "createdAt": "2026-11-01T12:18:49.089Z",
+    "lastLogin": "2026-11-01T12:18:49.089Z"
+  },
+  {
+    "id": "3e4556c4-d8e4-406f-8938-cf3e283399b8",
+    "name": "UI Test User",
+    "email": "user4c46b34a@gmail.com",
+    "password": "$2a$12$PcOLAgFMph0ZH6Zzv.t0XOCuLQeglQYZqUzrQWYaw29mObCoblI8q",
+    "provider": "email",
+    "createdAt": "2026-11-01T12:18:59.686Z",
+    "lastLogin": "2026-11-01T12:18:59.686Z"
+  },
+  {
+    "id": "6b306f9f-91c8-418c-a41a-0a240209e8df",
+    "name": "UI Test User",
+    "email": "user3c694669@gmail.com",
+    "password": "$2a$12$crtedUEfuS6jY5Wsi5/e2eztYccTr77Ts1kqoDYBorWgEpq4Gi3Im",
+    "provider": "email",
+    "createdAt": "2026-11-01T12:19:14.093Z",
+    "lastLogin": "2026-11-01T12:19:14.093Z"
+  },
+  {
+    "id": "f341de88-a9be-4f65-a139-4b0a2435f133",
+    "name": "UI Test User",
+    "email": "user29b4ec26@gmail.com",
+    "password": "$2a$12$0l.xrI1SQrqxxGnb68s99uK..h4Xi8XUO8cQ7PZbAT8Xby7E4ChYu",
+    "provider": "email",
+    "createdAt": "2026-11-01T12:20:00.406Z",
+    "lastLogin": "2026-11-01T12:20:00.406Z"
+  },
+  {
+    "id": "68092a80-27a1-4fe0-b63a-58d0cc8357f0",
+    "name": "UI Test User",
+    "email": "userdf829b27@gmail.com",
+    "password": "$2a$12$P5IPLBXuuonh6WrddsD9/egPxvbBt2SbIiRy1pHUy4G7/A6YyccU2",
+    "provider": "email",
+    "createdAt": "2026-11-01T12:20:11.853Z",
+    "lastLogin": "2026-11-01T12:20:11.853Z"
+  },
+  {
+    "id": "8c12d95f-8c30-4f36-a201-c5bd6ab7de16",
+    "name": "Verify User",
+    "email": "verify.user.1620470754@gmail.com",
+    "password": "$2a$12$nS9avZwpwrfg1vF/jywsL.bROjToPibitOaeBpTa.xh90o3xDPq3m",
+    "provider": "email",
+    "emailVerified": true,
+    "createdAt": "2026-11-01T12:28:25.273Z",
+    "lastLogin": "2026-11-01T12:28:25.858Z"
+  },
+  {
+    "id": "696e58f6-29df-4db3-9251-f671247973d7",
+    "name": "Blocked User",
+    "email": "blocked.user.240289471@gmail.com",
+    "password": "$2a$12$m.C.LChYz9oyYezbj3FhXeU7JVadLGzsGlTnM50tllcsT8g5bU58y",
+    "provider": "email",
+    "emailVerified": false,
+    "createdAt": "2026-11-01T12:28:30.161Z",
+    "lastLogin": "2026-11-01T12:28:30.161Z"
+  }
+]

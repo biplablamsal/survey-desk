@@ -418,7 +418,9 @@ function buildCasesTrendChart(V, period = chartPeriod, months = 6) {
   return h(
     'div',
     { class: 'chart-card' },
-    h('div', { class: 'chart-head' },
+    h(
+      'div',
+      { class: 'chart-head' },
       h('h3', {}, 'Cases per ' + (period === 'week' ? 'week' : 'month')),
       controls
     ),
@@ -500,7 +502,10 @@ function buildStageDonutChart(V) {
         h(
           'div',
           { class: 'chart-legend-item' },
-          h('span', { class: 'legend-dot', style: 'background:' + (STC[STG.indexOf(item.stage)] || '#94a3b8') }),
+          h('span', {
+            class: 'legend-dot',
+            style: 'background:' + (STC[STG.indexOf(item.stage)] || '#94a3b8'),
+          }),
           h('span', { class: 'legend-label' }, `${item.stage} (${item.count})`)
         )
       )
@@ -509,7 +514,12 @@ function buildStageDonutChart(V) {
   return h(
     'div',
     { class: 'chart-card' },
-    h('div', { class: 'chart-head' }, h('h3', {}, 'Workflow split'), h('span', { class: 'mu' }, 'Active cases')),
+    h(
+      'div',
+      { class: 'chart-head' },
+      h('h3', {}, 'Workflow split'),
+      h('span', { class: 'mu' }, 'Active cases')
+    ),
     h('div', { class: 'donut-wrap' }, svg),
     legend
   );
@@ -529,7 +539,10 @@ function caseDirectoryRows() {
 
 function renderAllCasesView() {
   const rows = caseDirectoryRows(),
-    owners = ['all', ...new Set(rows.map((r) => (r.c.owner || r.sv || 'Unassigned')).filter(Boolean))],
+    owners = [
+      'all',
+      ...new Set(rows.map((r) => r.c.owner || r.sv || 'Unassigned').filter(Boolean)),
+    ],
     stageOptions = ['all', ...STG],
     typeOptions = ['all', 'motor', 'property'];
 
@@ -537,12 +550,12 @@ function renderAllCasesView() {
     .filter((r) => {
       const q = allCasesState.q.trim().toLowerCase();
       const matchesQuery =
-        !q ||
-        [r.id, r.who, r.ref, r.sv, r.c.st, r.c.mod].join(' ').toLowerCase().includes(q);
+        !q || [r.id, r.who, r.ref, r.sv, r.c.st, r.c.mod].join(' ').toLowerCase().includes(q);
       const matchesStage = allCasesState.stage === 'all' || r.c.st === allCasesState.stage;
       const matchesType = allCasesState.type === 'all' || r.c.mod === allCasesState.type;
       const matchesOwner =
-        allCasesState.owner === 'all' || (r.c.owner || r.sv || 'Unassigned') === allCasesState.owner;
+        allCasesState.owner === 'all' ||
+        (r.c.owner || r.sv || 'Unassigned') === allCasesState.owner;
       return matchesQuery && matchesStage && matchesType && matchesOwner;
     })
     .map((r) => ({ ...r, p: pri(r.c), d: dueOf(r.c) }))
@@ -557,8 +570,22 @@ function renderAllCasesView() {
 
   const total = rows.length,
     active = rows.filter((r) => act(r.c)).length,
-    overdue = rows.filter((r) => act(r.c) && ((pend(r.c, 'p') && dl(r.c, 'p').od) || (pend(r.c, 'f') && dl(r.c, 'f').od))).length,
-    dueSoon = rows.filter((r) => act(r.c) && ((pend(r.c, 'p') && !dl(r.c, 'p').od && dl(r.c, 'p').left != null && dl(r.c, 'p').left <= 3) || (pend(r.c, 'f') && !dl(r.c, 'f').od && dl(r.c, 'f').left != null && dl(r.c, 'f').left <= 3))).length;
+    overdue = rows.filter(
+      (r) =>
+        act(r.c) && ((pend(r.c, 'p') && dl(r.c, 'p').od) || (pend(r.c, 'f') && dl(r.c, 'f').od))
+    ).length,
+    dueSoon = rows.filter(
+      (r) =>
+        act(r.c) &&
+        ((pend(r.c, 'p') &&
+          !dl(r.c, 'p').od &&
+          dl(r.c, 'p').left != null &&
+          dl(r.c, 'p').left <= 3) ||
+          (pend(r.c, 'f') &&
+            !dl(r.c, 'f').od &&
+            dl(r.c, 'f').left != null &&
+            dl(r.c, 'f').left <= 3))
+    ).length;
 
   const statCards = [
     ['Total', total, 'var(--ac)'],
@@ -594,7 +621,13 @@ function renderAllCasesView() {
           $('#dash').replaceChildren(renderAllCasesView());
         },
       },
-      ...stageOptions.map((x) => h('option', { value: x, selected: x === allCasesState.stage }, x === 'all' ? 'All stages' : x))
+      ...stageOptions.map((x) =>
+        h(
+          'option',
+          { value: x, selected: x === allCasesState.stage },
+          x === 'all' ? 'All stages' : x
+        )
+      )
     ),
     h(
       'select',
@@ -604,7 +637,13 @@ function renderAllCasesView() {
           $('#dash').replaceChildren(renderAllCasesView());
         },
       },
-      ...typeOptions.map((x) => h('option', { value: x, selected: x === allCasesState.type }, x === 'all' ? 'All types' : x === 'motor' ? 'Motor' : 'Property'))
+      ...typeOptions.map((x) =>
+        h(
+          'option',
+          { value: x, selected: x === allCasesState.type },
+          x === 'all' ? 'All types' : x === 'motor' ? 'Motor' : 'Property'
+        )
+      )
     ),
     h(
       'select',
@@ -614,7 +653,13 @@ function renderAllCasesView() {
           $('#dash').replaceChildren(renderAllCasesView());
         },
       },
-      ...owners.map((x) => h('option', { value: x, selected: x === allCasesState.owner }, x === 'all' ? 'All owners' : x))
+      ...owners.map((x) =>
+        h(
+          'option',
+          { value: x, selected: x === allCasesState.owner },
+          x === 'all' ? 'All owners' : x
+        )
+      )
     ),
     h(
       'select',
@@ -630,7 +675,9 @@ function renderAllCasesView() {
         ['claim', 'Claim number'],
         ['stage', 'Stage'],
         ['owner', 'Owner'],
-      ].map(([value, label]) => h('option', { value, selected: value === allCasesState.sort }, label))
+      ].map(([value, label]) =>
+        h('option', { value, selected: value === allCasesState.sort }, label)
+      )
     ),
     h(
       'button',
@@ -663,16 +710,54 @@ function renderAllCasesView() {
             },
             h(
               'div',
-              { class: 'case-card-head' },
-              h('div', {}, h('b', {}, r.id), h('small', { class: 'mu' }, r.c.mod === 'property' ? 'Property' : 'Motor')),
+              { class: 'case-card-top' },
+              h(
+                'div',
+                { class: 'case-card-id' },
+                h('b', {}, r.id),
+                h(
+                  'span',
+                  { class: 'case-card-type' },
+                  r.c.mod === 'property' ? 'Property' : 'Motor'
+                )
+              ),
               h('span', { class: 'pill', style: 'color:' + stageColor }, c.st)
             ),
-            h('div', { class: 'case-meta' }, h('strong', {}, 'Insured:'), ' ' + r.who),
-            h('div', { class: 'case-meta' }, h('strong', {}, 'Reference:'), ' ' + r.ref),
-            h('div', { class: 'case-meta' }, h('strong', {}, 'Surveyor:'), ' ' + r.sv),
-            h('div', { class: 'case-meta' }, h('strong', {}, 'Next step:'), ' ' + NXT[i]),
-            h('div', { class: 'case-meta row4' }, chip(dl(c, 'p')), chip(dl(c, 'f'))),
-            h('div', { class: 'case-meta' }, h('strong', {}, 'Priority:'), ' ' + h('span', { class: 'pill ' + r.p[1] }, r.p[0]))
+            h(
+              'div',
+              { class: 'case-card-summary' },
+              h('div', { class: 'case-card-label' }, 'Insured'),
+              h('div', { class: 'case-card-value' }, r.who)
+            ),
+            h(
+              'div',
+              { class: 'case-card-summary' },
+              h('div', { class: 'case-card-label' }, 'Reference'),
+              h('div', { class: 'case-card-value' }, r.ref)
+            ),
+            h(
+              'div',
+              { class: 'case-card-metrics' },
+              h('div', { class: 'case-metric' }, h('span', {}, 'Surveyor'), h('strong', {}, r.sv)),
+              h(
+                'div',
+                { class: 'case-metric' },
+                h('span', {}, 'Next step'),
+                h('strong', {}, NXT[i])
+              ),
+              h(
+                'div',
+                { class: 'case-metric' },
+                h('span', {}, 'Priority'),
+                h('span', { class: 'pill ' + r.p[1] }, r.p[0])
+              )
+            ),
+            h(
+              'div',
+              { class: 'case-card-footer' },
+              h('div', { class: 'case-status-group' }, chip(dl(c, 'p')), chip(dl(c, 'f'))),
+              h('span', { class: 'case-open-link' }, 'Open case →')
+            )
           );
         })
       )
@@ -684,7 +769,12 @@ function renderAllCasesView() {
     h(
       'div',
       { class: 'dh' },
-      h('div', {}, h('h1', {}, 'All cases'), h('span', { class: 'mu' }, 'Complete case directory and quick navigation')),
+      h(
+        'div',
+        {},
+        h('h1', {}, 'All cases'),
+        h('span', { class: 'mu' }, 'Complete case directory and quick navigation')
+      ),
       h(
         'div',
         { class: 'bar' },
@@ -697,7 +787,650 @@ function renderAllCasesView() {
   );
 }
 
+function getCurrentAuthUser() {
+  if (!window.SurveyAuth || typeof window.SurveyAuth.readAuth !== 'function') return null;
+  const auth = window.SurveyAuth.readAuth();
+  return auth && auth.user ? auth.user : null;
+}
+
+function syncAccountSidebarVisibility() {
+  const authUser = getCurrentAuthUser();
+  const isAdmin = !!(authUser && String(authUser.role || '').toUpperCase() === 'ADMIN');
+  ['user-admin-btn', 'audit-btn'].forEach((id) => {
+    const btn = document.getElementById(id);
+    if (btn) btn.hidden = !isAdmin;
+  });
+}
+
+async function showProfilePage(section = 'profile') {
+  const authUser = getCurrentAuthUser();
+  if (!authUser) {
+    showDash();
+    return;
+  }
+
+  syncAccountSidebarVisibility();
+  const el = $('#dash');
+  if (!el) return;
+
+  const nav = h(
+    'div',
+    { class: 'account-nav' },
+    h(
+      'button',
+      {
+        class: 'b' + (section === 'profile' ? ' p' : ''),
+        type: 'button',
+        onclick: () => showProfilePage('profile'),
+      },
+      'My Profile'
+    ),
+    h(
+      'button',
+      {
+        class: 'b' + (section === 'account' ? ' p' : ''),
+        type: 'button',
+        onclick: () => showProfilePage('account'),
+      },
+      'Account Settings'
+    ),
+    h(
+      'button',
+      {
+        class: 'b' + (section === 'security' ? ' p' : ''),
+        type: 'button',
+        onclick: () => showProfilePage('security'),
+      },
+      'Security'
+    ),
+    h(
+      'button',
+      {
+        class: 'b' + (section === 'activity' ? ' p' : ''),
+        type: 'button',
+        onclick: () => showProfilePage('activity'),
+      },
+      'Login Activity'
+    ),
+    h(
+      'button',
+      {
+        class: 'b' + (section === 'admin-users' ? ' p' : ''),
+        type: 'button',
+        onclick: () => showProfilePage('admin-users'),
+        hidden: String(authUser.role || '').toUpperCase() !== 'ADMIN',
+      },
+      'User Management'
+    ),
+    h(
+      'button',
+      {
+        class: 'b' + (section === 'admin-audit' ? ' p' : ''),
+        type: 'button',
+        onclick: () => showProfilePage('admin-audit'),
+        hidden: String(authUser.role || '').toUpperCase() !== 'ADMIN',
+      },
+      'Audit Log'
+    ),
+    h(
+      'button',
+      {
+        class: 'b',
+        type: 'button',
+        onclick: showDash,
+      },
+      '← Dashboard'
+    )
+  );
+
+  const pageShell = h('div', { class: 'account-page' }, nav);
+
+  const renderLoading = () => {
+    pageShell.append(
+      h('div', { class: 'card' }, h('p', { class: 'mu' }, 'Loading account details…'))
+    );
+  };
+
+  el.replaceChildren(pageShell);
+  renderLoading();
+
+  try {
+    if (section === 'profile') {
+      const profile = await window.SurveyAuth.request('/api/profile/me');
+      const user = profile.user || {};
+      const form = h(
+        'form',
+        { class: 'account-form' },
+        h(
+          'div',
+          { class: 'account-grid' },
+          h(
+            'div',
+            { class: 'account-card' },
+            h('h3', {}, 'Profile overview'),
+            h(
+              'div',
+              { class: 'account-hero' },
+              h(
+                'div',
+                { class: 'account-avatar' },
+                (user.fullName || user.name || user.email || 'U').charAt(0).toUpperCase()
+              ),
+              h(
+                'div',
+                {},
+                h('h2', {}, user.fullName || user.name || 'Untitled user'),
+                h('p', { class: 'mu' }, user.email || 'No email on file'),
+                h(
+                  'div',
+                  { class: 'account-actions' },
+                  h(
+                    'span',
+                    { class: 'pill ' + (user.emailVerified ? 'pr-ok' : 'pr-n') },
+                    user.emailVerified ? 'Verified' : 'Unverified'
+                  ),
+                  h('span', { class: 'pill pr-m' }, user.role || 'User')
+                )
+              )
+            )
+          ),
+          h(
+            'div',
+            { class: 'account-card' },
+            h('h3', {}, 'Personal details'),
+            h(
+              'div',
+              { class: 'account-row' },
+              h(
+                'div',
+                { class: 'fld' },
+                h('label', {}, 'Full name'),
+                h('input', { name: 'fullName', value: user.fullName || user.name || '' })
+              ),
+              h(
+                'div',
+                { class: 'fld' },
+                h('label', {}, 'Phone number'),
+                h('input', { name: 'phoneNumber', value: user.phoneNumber || '' })
+              ),
+              h(
+                'div',
+                { class: 'fld' },
+                h('label', {}, 'Designation'),
+                h('input', { name: 'designation', value: user.designation || '' })
+              ),
+              h(
+                'div',
+                { class: 'fld' },
+                h('label', {}, 'Profile image URL'),
+                h('input', { name: 'profileImageUrl', value: user.profileImageUrl || '' })
+              )
+            ),
+            h(
+              'div',
+              { class: 'account-actions' },
+              h('button', { class: 'b p', type: 'submit' }, 'Save profile')
+            )
+          )
+        )
+      );
+      form.onsubmit = async (event) => {
+        event.preventDefault();
+        const inputs = form.querySelectorAll('input');
+        const payload = {};
+        inputs.forEach((input) => {
+          if (input.name) payload[input.name] = input.value;
+        });
+        try {
+          await window.SurveyAuth.request('/api/profile/me', { method: 'PATCH', body: payload });
+          await showProfilePage('profile');
+        } catch (error) {
+          alert(error.message || 'Profile update failed.');
+        }
+      };
+      pageShell.replaceChildren(nav, form);
+      return;
+    }
+
+    if (section === 'account') {
+      const settings = await window.SurveyAuth.request('/api/account/settings');
+      const notifications = settings.notifications || {};
+      const keys = ['emailAlerts', 'caseUpdates', 'securityAlerts', 'weeklyDigest'];
+      const toggles = keys.map((key) =>
+        h(
+          'label',
+          { class: 'account-toggle' },
+          h(
+            'span',
+            {},
+            key.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())
+          ),
+          h('input', { type: 'checkbox', checked: Boolean(notifications[key]) })
+        )
+      );
+      const form = h(
+        'form',
+        { class: 'account-form' },
+        h(
+          'div',
+          { class: 'account-grid' },
+          h(
+            'div',
+            { class: 'account-card' },
+            h('h3', {}, 'Account status'),
+            h(
+              'ul',
+              { class: 'account-list' },
+              h(
+                'li',
+                {},
+                h('span', {}, 'Primary email'),
+                h('strong', {}, settings.user && settings.user.email ? settings.user.email : '—')
+              ),
+              h('li', {}, h('span', {}, 'Role'), h('strong', {}, settings.role || 'User')),
+              h(
+                'li',
+                {},
+                h('span', {}, 'Google'),
+                h('strong', {}, settings.googleConnected ? 'Connected' : 'Not connected')
+              )
+            )
+          ),
+          h(
+            'div',
+            { class: 'account-card' },
+            h('h3', {}, 'Notification preferences'),
+            h('div', { class: 'account-form' }, ...toggles),
+            h(
+              'div',
+              { class: 'account-actions' },
+              h('button', { class: 'b p', type: 'submit' }, 'Save preferences')
+            )
+          )
+        )
+      );
+      form.onsubmit = async (event) => {
+        event.preventDefault();
+        const nextNotifications = {};
+        keys.forEach((key) => {
+          const input = form.querySelectorAll('input[type="checkbox"]')[keys.indexOf(key)];
+          nextNotifications[key] = !!(input && input.checked);
+        });
+        try {
+          await window.SurveyAuth.request('/api/account/settings', {
+            method: 'PATCH',
+            body: { notifications: nextNotifications },
+          });
+          await showProfilePage('account');
+        } catch (error) {
+          alert(error.message || 'Unable to update preferences.');
+        }
+      };
+      pageShell.replaceChildren(nav, form);
+      return;
+    }
+
+    if (section === 'security') {
+      const [sessions, activity] = await Promise.all([
+        window.SurveyAuth.request('/api/security/sessions'),
+        window.SurveyAuth.request('/api/security/login-activity'),
+      ]);
+      const cards = h(
+        'div',
+        { class: 'account-grid' },
+        h(
+          'div',
+          { class: 'account-card' },
+          h('h3', {}, 'Active sessions'),
+          sessions && sessions.sessions && sessions.sessions.length
+            ? h(
+                'table',
+                { class: 'account-table' },
+                h(
+                  'thead',
+                  {},
+                  h(
+                    'tr',
+                    {},
+                    h('th', {}, 'Browser'),
+                    h('th', {}, 'Device'),
+                    h('th', {}, 'Created'),
+                    h('th', {}, 'Action')
+                  )
+                ),
+                h(
+                  'tbody',
+                  {},
+                  ...sessions.sessions.map((session) =>
+                    h(
+                      'tr',
+                      {},
+                      h('td', {}, session.browser_name || 'Unknown'),
+                      h('td', {}, session.device_name || 'Desktop'),
+                      h(
+                        'td',
+                        {},
+                        session.created_at ? new Date(session.created_at).toLocaleString() : '—'
+                      ),
+                      h(
+                        'td',
+                        {},
+                        h(
+                          'button',
+                          {
+                            class: 'b',
+                            type: 'button',
+                            onclick: async () => {
+                              try {
+                                await window.SurveyAuth.request(
+                                  `/api/security/revoke-session/${session.id}`,
+                                  { method: 'POST' }
+                                );
+                                await showProfilePage('security');
+                              } catch (error) {
+                                alert(error.message || 'Unable to revoke session.');
+                              }
+                            },
+                          },
+                          'Revoke'
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            : h('p', { class: 'mu' }, 'No active sessions found.')
+        ),
+        h(
+          'div',
+          { class: 'account-card' },
+          h('h3', {}, 'Security controls'),
+          h(
+            'div',
+            { class: 'account-actions' },
+            h(
+              'button',
+              {
+                class: 'b p',
+                type: 'button',
+                onclick: async () => {
+                  try {
+                    await window.SurveyAuth.request('/api/security/logout-others', {
+                      method: 'POST',
+                    });
+                    await showProfilePage('security');
+                  } catch (error) {
+                    alert(error.message || 'Unable to end other sessions.');
+                  }
+                },
+              },
+              'Log out other sessions'
+            )
+          ),
+          h('p', { class: 'mu' }, 'Last login and session metadata are shown below for reference.')
+        )
+      );
+      const activityCard = h(
+        'div',
+        { class: 'account-card' },
+        h('h3', {}, 'Login activity'),
+        activity && activity.entries && activity.entries.length
+          ? h(
+              'table',
+              { class: 'account-table' },
+              h(
+                'thead',
+                {},
+                h(
+                  'tr',
+                  {},
+                  h('th', {}, 'When'),
+                  h('th', {}, 'Method'),
+                  h('th', {}, 'Browser'),
+                  h('th', {}, 'IP')
+                )
+              ),
+              h(
+                'tbody',
+                {},
+                ...activity.entries.map((entry) =>
+                  h(
+                    'tr',
+                    {},
+                    h(
+                      'td',
+                      {},
+                      entry.created_at ? new Date(entry.created_at).toLocaleString() : '—'
+                    ),
+                    h('td', {}, entry.login_method || 'email'),
+                    h('td', {}, entry.browser_name || 'Unknown'),
+                    h('td', {}, entry.ip_address || 'Unknown')
+                  )
+                )
+              )
+            )
+          : h('p', { class: 'mu' }, 'No login activity recorded yet.')
+      );
+      pageShell.replaceChildren(nav, cards, activityCard);
+      return;
+    }
+
+    if (section === 'activity') {
+      const activity = await window.SurveyAuth.request('/api/security/login-activity');
+      const card = h(
+        'div',
+        { class: 'account-card' },
+        h('h3', {}, 'Login activity'),
+        activity && activity.entries && activity.entries.length
+          ? h(
+              'table',
+              { class: 'account-table' },
+              h(
+                'thead',
+                {},
+                h(
+                  'tr',
+                  {},
+                  h('th', {}, 'When'),
+                  h('th', {}, 'Method'),
+                  h('th', {}, 'Browser'),
+                  h('th', {}, 'Status'),
+                  h('th', {}, 'IP')
+                )
+              ),
+              h(
+                'tbody',
+                {},
+                ...activity.entries.map((entry) =>
+                  h(
+                    'tr',
+                    {},
+                    h(
+                      'td',
+                      {},
+                      entry.created_at ? new Date(entry.created_at).toLocaleString() : '—'
+                    ),
+                    h('td', {}, entry.login_method || 'email'),
+                    h('td', {}, entry.browser_name || 'Unknown'),
+                    h('td', {}, entry.status || 'success'),
+                    h('td', {}, entry.ip_address || 'Unknown')
+                  )
+                )
+              )
+            )
+          : h('p', { class: 'mu' }, 'No login activity recorded yet.')
+      );
+      pageShell.replaceChildren(nav, card);
+      return;
+    }
+
+    if (section === 'admin-users') {
+      if (String(authUser.role || '').toUpperCase() !== 'ADMIN') {
+        pageShell.replaceChildren(
+          nav,
+          h(
+            'div',
+            { class: 'card' },
+            h('h3', { class: 'er' }, 'Admin access required'),
+            h('p', { class: 'mu' }, 'This section is available only to administrators.')
+          )
+        );
+        return;
+      }
+      const users = await window.SurveyAuth.request('/api/admin/users');
+      const table = h(
+        'div',
+        { class: 'account-card' },
+        h('h3', {}, 'User management'),
+        users && users.users && users.users.length
+          ? h(
+              'table',
+              { class: 'account-table' },
+              h(
+                'thead',
+                {},
+                h(
+                  'tr',
+                  {},
+                  h('th', {}, 'Name'),
+                  h('th', {}, 'Email'),
+                  h('th', {}, 'Role'),
+                  h('th', {}, 'Status'),
+                  h('th', {}, 'Action')
+                )
+              ),
+              h(
+                'tbody',
+                {},
+                ...users.users.map((user) =>
+                  h(
+                    'tr',
+                    {},
+                    h('td', {}, user.full_name || user.email.split('@')[0]),
+                    h('td', {}, user.email),
+                    h('td', {}, user.role || 'ASSISTANT'),
+                    h(
+                      'td',
+                      {},
+                      h(
+                        'span',
+                        {
+                          class: 'account-status-pill ' + (user.is_active ? 'active' : 'inactive'),
+                        },
+                        user.is_active ? 'Active' : 'Disabled'
+                      )
+                    ),
+                    h(
+                      'td',
+                      {},
+                      h(
+                        'button',
+                        {
+                          class: 'b',
+                          type: 'button',
+                          onclick: async () => {
+                            try {
+                              await window.SurveyAuth.request(
+                                `/api/admin/users/${user.id}/toggle-status`,
+                                { method: 'POST' }
+                              );
+                              await showProfilePage('admin-users');
+                            } catch (error) {
+                              alert(error.message || 'Unable to update user status.');
+                            }
+                          },
+                        },
+                        user.is_active ? 'Disable' : 'Enable'
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          : h('p', { class: 'mu' }, 'No users found.')
+      );
+      pageShell.replaceChildren(nav, table);
+      return;
+    }
+
+    if (section === 'admin-audit') {
+      if (String(authUser.role || '').toUpperCase() !== 'ADMIN') {
+        pageShell.replaceChildren(
+          nav,
+          h(
+            'div',
+            { class: 'card' },
+            h('h3', { class: 'er' }, 'Admin access required'),
+            h('p', { class: 'mu' }, 'This section is available only to administrators.')
+          )
+        );
+        return;
+      }
+      const audit = await window.SurveyAuth.request('/api/admin/audit-logs');
+      const table = h(
+        'div',
+        { class: 'account-card' },
+        h('h3', {}, 'Administrative audit log'),
+        audit && audit.logs && audit.logs.length
+          ? h(
+              'table',
+              { class: 'account-table' },
+              h(
+                'thead',
+                {},
+                h(
+                  'tr',
+                  {},
+                  h('th', {}, 'When'),
+                  h('th', {}, 'Action'),
+                  h('th', {}, 'Actor'),
+                  h('th', {}, 'Target')
+                )
+              ),
+              h(
+                'tbody',
+                {},
+                ...audit.logs.map((entry) =>
+                  h(
+                    'tr',
+                    {},
+                    h(
+                      'td',
+                      {},
+                      entry.created_at ? new Date(entry.created_at).toLocaleString() : '—'
+                    ),
+                    h('td', {}, entry.action || 'unknown'),
+                    h('td', {}, entry.actor_name || 'System'),
+                    h('td', {}, entry.target_name || '—')
+                  )
+                )
+              )
+            )
+          : h('p', { class: 'mu' }, 'No audit entries yet.')
+      );
+      pageShell.replaceChildren(nav, table);
+      return;
+    }
+  } catch (error) {
+    pageShell.replaceChildren(
+      nav,
+      h(
+        'div',
+        { class: 'card' },
+        h('h3', { class: 'er' }, 'Account page failed to load'),
+        h('p', { class: 'mu' }, String(error && error.message ? error.message : error)),
+        h(
+          'button',
+          { class: 'b p', type: 'button', onclick: () => showProfilePage(section) },
+          'Retry'
+        )
+      )
+    );
+  }
+}
+
 function drawDash() {
+  syncAccountSidebarVisibility();
   const el = $('#dash'),
     run = () => {
       try {
@@ -853,7 +1586,7 @@ function buildDash() {
     );
   };
   const rc = [...V].sort((a, b) => (b.c.u || b.c.cr || 0) - (a.c.u || a.c.cr || 0)).slice(0, 6),
-    fs = (l, i) => h('div', { class: 'fld' }, h('label', {}, l), i),
+    fs = (l, i) => h('div', { class: 'setting-field' }, h('label', {}, l), i),
     ro = cfg.role !== 'Admin',
     rs = h(
       'select',
@@ -1070,22 +1803,31 @@ function buildDash() {
     ),
     h(
       'details',
-      { class: 'card' },
-      h('summary', {}, 'Role & settings'),
+      { class: 'card settings-panel' },
       h(
-        'div',
-        { class: 'grid' },
-        fs('View as (demo role)', rs),
-        fs('My name (cases assigned to me)', nmI),
-        fs('Preliminary report deadline (days)', pdI),
-        fs('Final report deadline (days)', fdI),
-        fs('Counting rule', cn),
-        signUI()
+        'summary',
+        { class: 'settings-summary' },
+        h('span', { class: 'settings-summary-title' }, 'Role & settings'),
+        h('span', { class: 'settings-summary-pill' }, 'Preferences')
       ),
       h(
-        'p',
-        { class: 'mu' },
-        'Admin: all cases, deadline settings, delete. Principal Surveyor: all cases and reassignment. Staff: only cases assigned to them. This role switch changes what is shown on this device only; real access control needs a signed-in backend.'
+        'div',
+        { class: 'settings-body' },
+        h(
+          'div',
+          { class: 'settings-grid' },
+          fs('View as (demo role)', rs),
+          fs('My name (cases assigned to me)', nmI),
+          fs('Preliminary report deadline (days)', pdI),
+          fs('Final report deadline (days)', fdI),
+          fs('Counting rule', cn),
+          signUI()
+        ),
+        h(
+          'p',
+          { class: 'settings-note' },
+          'Admin: all cases, deadline settings, delete. Principal Surveyor: all cases and reassignment. Staff: only cases assigned to them. This role switch changes what is shown on this device only; real access control needs a signed-in backend.'
+        )
       )
     )
   );

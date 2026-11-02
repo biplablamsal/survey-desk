@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"
+    />
     <meta name="theme-color" content="#0b5fa5" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -10,12 +13,19 @@
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
+    <div id="menu-backdrop" hidden aria-hidden="true"></div>
     <div class="shell">
       <aside id="side">
         <div class="brand">🛡 Survey Desk<small>Insurance claim surveys</small></div>
         <button class="mi cta" id="nw">+ New case</button
         ><button class="mi" id="db">▦ Dashboard</button
         ><button class="mi" id="mc">▤ All cases</button
+        ><button class="mi" id="profile-btn">👤 My Profile</button
+        ><button class="mi" id="account-btn">⚙ Account Settings</button
+        ><button class="mi" id="security-btn">🔐 Security</button
+        ><button class="mi" id="activity-btn">📝 Login Activity</button
+        ><button class="mi" id="user-admin-btn" hidden>👥 User Management</button
+        ><button class="mi" id="audit-btn" hidden>🧾 Audit Log</button
         ><button class="mi" id="ms">⚙ Settings &amp; role</button
         ><button class="mi" id="mi">⇪ Import case</button>
         <div id="cm" hidden>
@@ -29,10 +39,18 @@
           <span class="pill" id="rl"></span>
           <div id="sv" class="mu"></div>
         </div>
+        <button class="mi" id="logout-btn-sidebar" type="button" hidden>⇠ Logout</button>
       </aside>
       <div class="content">
         <header class="top">
           <button class="b" id="hb">☰</button><strong>Survey Desk</strong>
+          <div
+            class="auth-header-tools"
+            style="margin-left: auto; display: flex; align-items: center; gap: 8px"
+          >
+            <span id="auth-user-badge" class="auth-user-badge" hidden></span>
+            <button type="button" class="b" id="logout-btn" hidden>Logout</button>
+          </div>
         </header>
         <div id="dash"></div>
         <div class="app" hidden><main id="main"></main></div>
@@ -111,6 +129,7 @@
     <!-- Platform shim: file downloads + optional AI hook when NOT running inside claude.ai -->
     <script src="js/platform.js"></script>
     <script src="js/ai-config.js"></script>
+    <script src="js/auth.js"></script>
 
     <!-- Application scripts (classic scripts, order matters) -->
     <script src="js/01-core.js"></script>
