@@ -10,7 +10,11 @@ const h = (t, a = {}, ...c) => {
       ? (e.className = a[k])
       : k.startsWith('on')
         ? (e[k] = a[k])
-        : e.setAttribute(k, a[k]);
+        : // hidden is a boolean attribute: setAttribute writes hidden="false", and the mere presence
+          // of the attribute hides the element, so a conditional "hidden: isAdmin === false" inverts.
+          k === 'hidden'
+          ? (e.hidden = Boolean(a[k]))
+          : e.setAttribute(k, a[k]);
   }
   c.flat().forEach((x) => e.append(x && x.nodeType ? x : document.createTextNode(x ?? '')));
   return e;
@@ -51,6 +55,9 @@ const T = 't',
   P = 'p',
   H = 'h',
   C = 'c',
+  /* Text input with a suggestion list: a dropdown to pick from, but free text still survives, so
+     an insurer recorded before the master list existed is never silently blanked. */
+  LST = 'dl',
   IT = {
     t: 'text',
     n: 'number',
@@ -60,6 +67,7 @@ const T = 't',
     h: 'hidden',
     c: 'text',
     k: 'checkbox',
+    dl: 'text',
   };
 
 const F = (n, l, t = T, o = {}) => ({ n, l, t, ...o });
@@ -113,16 +121,53 @@ const CT = [
   'Other',
 ];
 
+/* What a third party consists of. A claim can hit a vehicle, a person, or property that is not a
+   vehicle – any one of them or all together – and the questions a party is asked follow this
+   answer. The code is what the app reasons with, the label is what gets stored on the party, so an
+   exported case reads without the code table at hand. */
+const TP_KINDS = [
+    ['veh', 'Vehicle'],
+    ['inj', 'Person (injury)'],
+    ['prop', 'Property'],
+  ],
+  TP_KIND_LABELS = TP_KINDS.map(([, l]) => l);
+
+const TP_PROP = [
+  'Boundary wall / gate',
+  'Building / shop',
+  'Utility pole / transformer',
+  'Road furniture / signboard',
+  'Parked vehicle not in use',
+  'Goods / cargo',
+  'Agriculture / livestock',
+  'Other',
+];
+
+const TP_WHO = [
+  'Driver',
+  'Passenger',
+  'Two-wheeler rider',
+  'Cyclist',
+  'Pedestrian',
+  'Person at the roadside',
+  'Other',
+];
+
 const YR = { min: 1980, max: new Date().getFullYear() + 1, int: 1 };
 
 const nm = (n, l, o = {}) => F(n, l, T, { ...NAME, ...o }),
   sel = (n, l, o, x = {}) => F(n, l, S, { o, ...x });
 
-const mv = (q) => [
-  F('dir' + q, 'Direction of travel'),
-  F('lane' + q, 'Lane / road position'),
-  sel('mv' + q, 'Movement before accident', MOV),
-  F('spd' + q, 'Approx. speed (km/h)', T, { h: 'e.g. 30–40' }),
-  F('imp' + q, 'Point of impact'),
-  F('aft' + q, 'Movement / damage after impact', A),
-];
+/* A movement block is written twice, once for the insured vehicle and once for the third-party
+   one; the second only applies when the third party is a vehicle, so it carries that kind. */
+const mv = (q, ks) => {
+  const o = ks ? { ks } : {};
+  return [
+    F('dir' + q, 'Direction of travel', T, o),
+    F('lane' + q, 'Lane / road position', T, o),
+    sel('mv' + q, 'Movement before accident', MOV, o),
+    F('spd' + q, 'Approx. speed (km/h)', T, { h: 'e.g. 30–40', ...o }),
+    F('imp' + q, 'Point of impact', T, o),
+    F('aft' + q, 'Movement / damage after impact', A, o),
+  ];
+};

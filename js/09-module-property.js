@@ -1,6 +1,16 @@
 /* Property claim module: schema, rules, narrative, registration in MODS
    Loaded as a classic script: everything here shares the global scope. Order of <script> tags in index.html matters. */
 
+/* Property claims follow the same five workflow stages; "Incident & inspection" replaces
+   "Accident & inspection" because fire, flood and earthquake are not accidents. */
+const WF_GROUPS_P = [
+  { n: 'Case registration', k: ['case', 'pol', 'risk'] },
+  { n: 'Incident & inspection', k: ['inc', 'dmg', 'photos', 'spot'] },
+  { n: 'Preliminary assessment', k: ['est', 'prelim'] },
+  { n: 'Final assessment', k: ['pla', 'concl'] },
+  { n: 'Report & verification', k: ['report', 'final'] },
+];
+
 function norm(S) {
   S.forEach((s) => {
     s.g = s.g.map(([t, f, note]) => ({ t, f, note }));
@@ -12,14 +22,18 @@ function norm(S) {
   return {
     SECS: S,
     FM: fm,
-    ALL: [
-      ...S,
-      { k: 'pla', t: 'Loss assessment (BOQ)' },
-      { k: 'photos', t: 'Photos & annexes' },
-      { k: 'report', t: 'Data review' },
-      { k: 'prelim', t: 'Preliminary report' },
-      { k: 'final', t: 'Final report' },
-    ],
+    ALL: wfOrder(
+      [
+        ...S,
+        { k: 'pla', t: 'Loss assessment (BOQ)' },
+        { k: 'photos', t: 'Photos & annexes' },
+        { k: 'report', t: 'Data review' },
+        { k: 'spot', t: 'Spot report' },
+        { k: 'prelim', t: 'Preliminary report' },
+        { k: 'final', t: 'Final report' },
+      ],
+      WF_GROUPS_P
+    ),
   };
 }
 
@@ -44,19 +58,13 @@ const PS = [
         [
           F('claimNo', 'Insurance claim no.', T, { r: 1, ...NO }),
           F('policyNo', 'Policy number', T, { r: 1, ...NO }),
-          F('company', 'Insurance company', T, { r: 1 }),
+          F('company', 'Insurance company', LST, { r: 1, o: insurerNames }),
           F('surveyor', 'Surveyor name', T, { r: 1 }),
           F('lic', 'Surveyor licence no.', T, { r: 1 }),
           F('survey', 'Survey date', D_, { r: 1 }),
           F('acc', 'Date of loss', D_, { r: 1 }),
           F('loc', 'Loss / risk location', T, { r: 1 }),
           sel('ctype', 'Cause of loss', PCT, { r: 1 }),
-          sel(
-            'status',
-            'Survey status',
-            ['Preliminary Survey', 'Final Survey', 'Spot Survey', 'Re-inspection'],
-            { r: 1 }
-          ),
         ],
       ],
     ],

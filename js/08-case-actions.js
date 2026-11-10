@@ -71,23 +71,29 @@ function showDash() {
   view = 'dash';
   if (cur && DB[cur]) sv(1);
   $('#dash').hidden = false;
+  $('#dash').classList.remove('dash-cases');
   $('.app').hidden = true;
   ['#cs', '#del', '#dx'].forEach((s) => ($(s).hidden = true));
   $('#cm').hidden = true;
+  $('#ct').hidden = true;
   if (!document.querySelector('#side .mi.on')) setMenu('db');
   drawDash();
   window.scrollTo(0, 0);
+  rememberPlace();
 }
 
 function showAllCases() {
   view = 'cases';
   $('#dash').hidden = false;
+  $('#dash').classList.add('dash-cases');
   $('.app').hidden = true;
   ['#cs', '#del', '#dx'].forEach((s) => ($(s).hidden = true));
   $('#cm').hidden = true;
+  $('#ct').hidden = true;
   $('#dash').replaceChildren(renderAllCasesView());
   setMenu('mc');
   window.scrollTo(0, 0);
+  rememberPlace();
 }
 
 function openNew() {

@@ -105,7 +105,10 @@ function pager() {
 
 function render() {
   const m = $('#main'),
-    s = NAV.find((x) => x.k === sec);
+    s = NAV.find((x) => x.k === sec),
+    na = !!(s.show && !s.show());
+  /* The viewfinder keeps running only on the page that shows it. */
+  if (sec !== 'photos') camStop();
   autofill();
   m.replaceChildren(
     h(
@@ -125,8 +128,35 @@ function render() {
       ' › ' + (g('case_claimNo') || 'Untitled case') + ' · ' + (MOD.name || '')
     ),
     h('h2', {}, s.t),
+    /* A section that does not apply says so, and offers the one switch that makes it apply. Without
+       this the screen would look empty and read as "unfinished" rather than "not applicable". */
+    na
+      ? h(
+          'div',
+          { class: 'na-note' },
+          h('b', {}, 'Not applicable'),
+          h(
+            'span',
+            {},
+            'No third party is recorded for this case, so nothing here is expected. ' +
+              'Fields and checks return as soon as a third party is involved.'
+          ),
+          h(
+            'button',
+            {
+              class: 'b',
+              type: 'button',
+              onclick: () => {
+                tpAdd();
+                render();
+              },
+            },
+            '+ Add Third Party'
+          )
+        )
+      : '',
     sec === 'case' ? trackUI(Dd) : '',
-    MOD.links && s.F && MOD.links.some((l) => l[0].startsWith(s.k + '_'))
+    MOD.links && !na && s.F && MOD.links.some((l) => l[0].startsWith(s.k + '_'))
       ? h(
           'div',
           { class: 'bar' },
@@ -158,11 +188,15 @@ function render() {
       : ''
   );
   if (sec === 'pla') plaUI(m);
-  else if (sec === 'prelim' || sec === 'final') genUI(m, sec);
+  /* Every report type in the central table opens the same editor; adding a kind to REPORT_KINDS
+     and to a module's section list is enough, this line does not have to learn about it. */
+  else if (REPORT_KINDS[sec]) genUI(m, sec);
   else if (sec === 'photos') photosUI(m);
   else if (sec === 'bills') billsUI(m);
   else if (sec === 'report') reportUI(m);
-  else
+  /* An N/A section shows only its notice: rendering 30 empty fields under "nothing here is
+     expected" would contradict the banner and tempt the surveyor to fill irrelevant data. */
+  else if (!na)
     s.g.forEach((x) => {
       const gr = h('div', { class: 'grid' });
       x.f.filter((y) => !hid(y)).forEach((y) => gr.append(fld(y)));
@@ -177,9 +211,16 @@ function render() {
           )
         );
     });
+  /* The third-party list belongs to the case itself, not to one module's page, so it sits under
+     the case fields whether or not any party has been added yet. */
+  if (sec === 'case' && !na) m.append(tpListUI());
   if (s.g) m.append(xUI(s));
   m.append(pager());
   paint();
+  /* Which page of the case is on screen is decided here, and every way of changing it — the rail, the
+     phone strip, the pager, a jump from the review list or from Quick Capture — ends in this repaint,
+     so this is the one place that can say it. */
+  rememberPlace();
   window.scrollTo(0, 0);
 }
 
@@ -218,10 +259,33 @@ $('#db').onclick = () => {
 };
 
 $('#mc').onclick = () => {
+  allCasesState.view = 'all';
+  acPersist();
   showAllCases();
   setMenu('mc');
   closeSideMenu();
 };
+
+/* The Case operations cluster is a shortcut into the saved views All Cases already owns, so the
+   sidebar and the in-page tabs can never disagree about what a view means. The table is named because
+   the shortcut and its saved view are the one place where the screen does not say which sidebar entry
+   was pressed, and resuming a page (28-place.js) has to light the right one. */
+const OP_VIEWS = [
+  ['op-mine', 'mine'],
+  ['op-insp', 'insp'],
+  ['op-rep', 'prelim'],
+  ['op-rect', 'rect'],
+];
+
+OP_VIEWS.forEach(([id, k]) => {
+  $('#' + id).onclick = () => {
+    allCasesState.view = k;
+    acPersist();
+    showAllCases();
+    setMenu(id);
+    closeSideMenu();
+  };
+});
 
 $('#profile-btn').onclick = () => {
   if (typeof showProfilePage === 'function') {
@@ -283,6 +347,46 @@ $('#ms').onclick = () => {
     }
   }, 150);
 };
+
+$('#ins-master-btn').onclick = () => {
+  if (typeof showInsurerMaster === 'function') {
+    showInsurerMaster();
+    setMenu('ins-master-btn');
+  }
+  closeSideMenu();
+};
+
+/* Group headings fold their cluster; the choice survives reloads but case-scoped clusters are
+   excluded — hiding the workflow rail of the case being edited would hide the work itself. */
+(() => {
+  let folded = {};
+  try {
+    folded = JSON.parse(localStorage.getItem('sp.sidefold') || '{}');
+  } catch {}
+  const groups = document.querySelectorAll('#side .sg');
+  groups.forEach((g, i) => {
+    if (!g.hasAttribute('data-fold') || g.id === 'cm') return;
+    const head = g.querySelector('h5');
+    if (!head) return;
+    head.tabIndex = 0;
+    head.setAttribute('role', 'button');
+    if (folded[i]) g.classList.add('folded');
+    const toggle = () => {
+      const now = g.classList.toggle('folded');
+      folded[i] = now;
+      try {
+        localStorage.setItem('sp.sidefold', JSON.stringify(folded));
+      } catch {}
+    };
+    head.onclick = toggle;
+    head.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggle();
+      }
+    };
+  });
+})();
 
 $('#mi').onclick = () => {
   impOpen();
@@ -411,6 +515,21 @@ $('#di').onclick = () => {
             }));
         });
     const mid = o.module || c.mod;
+    /* Extra third parties travel with the case record, so an import has to carry them too –
+       re-keyed so two imports can never share a row id. The rows are taken from TPF, the one list
+       of what a party holds, so a party question added there is carried here without a second
+       list to remember. */
+    n.tps = (Array.isArray(c.tps) ? c.tps : [])
+      .slice(0, 40)
+      .map((p, i) =>
+        Object.fromEntries([
+          ['id', 'tp' + Date.now().toString(36) + i],
+          ...TPF.map(([k, , kind]) => [
+            k,
+            String(p[k] ?? '').slice(0, kind === 'a' ? 3000 : kind === 'm' ? 20 : 160),
+          ]),
+        ])
+      );
     if (STG.includes(c.st) || OLDMAP[c.st]) n.st = STG.includes(c.st) ? c.st : OLDMAP[c.st];
     n.pSub = String(c.pSub || '').slice(0, 10);
     n.fSub = String(c.fSub || '').slice(0, 10);

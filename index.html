@@ -2,14 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b5fa5" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Survey Desk" />
     <title>Survey Desk</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/assets/icons/icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
@@ -17,43 +19,110 @@
     <div class="shell">
       <aside id="side">
         <div class="brand">🛡 Survey Desk<small>Insurance claim surveys</small></div>
-        <button class="mi cta" id="nw">+ New case</button
-        ><button class="mi" id="db">▦ Dashboard</button
-        ><button class="mi" id="mc">▤ All cases</button
-        ><button class="mi" id="profile-btn">👤 My Profile</button
-        ><button class="mi" id="account-btn">⚙ Account Settings</button
-        ><button class="mi" id="security-btn">🔐 Security</button
-        ><button class="mi" id="activity-btn">📝 Login Activity</button
-        ><button class="mi" id="user-admin-btn" hidden>👥 User Management</button
-        ><button class="mi" id="audit-btn" hidden>🧾 Audit Log</button
-        ><button class="mi" id="ms">⚙ Settings &amp; role</button
-        ><button class="mi" id="mi">⇪ Import case</button>
-        <div id="cm" hidden>
+        <div class="sg" data-fold>
+          <h5 class="sfold">Survey work</h5>
+          <button class="mi" id="db"><span class="ic">▦</span> Dashboard</button>
+          <button class="mi" id="mc"><span class="ic">▤</span> All cases</button>
+          <button class="mi" id="tk"><span class="ic">☑</span> My work</button>
+          <button class="mi" id="dv"><span class="ic">📎</span> Documents</button>
+          <button class="mi" id="nw"><span class="ic">＋</span> New case</button>
+          <button class="mi" id="mi"><span class="ic">⇪</span> Import case</button>
+        </div>
+        <div class="sg" id="ops-group" data-fold>
+          <h5 class="sfold">Case operations</h5>
+          <button class="mi" id="op-mine"><span class="ic">◎</span> My assigned cases</button>
+          <button class="mi" id="op-insp"><span class="ic">🔍</span> Pending inspections</button>
+          <button class="mi" id="op-rep"><span class="ic">📄</span> Pending reports</button>
+          <button class="mi" id="op-rect"><span class="ic">↻</span> Rectifications</button>
+        </div>
+        <div id="cm" class="sg" hidden>
           <h5>Current case</h5>
           <select id="cs" hidden></select>
           <nav id="nav"></nav>
-          <button class="mi" id="dx" hidden>⇄ Export / import this case</button
-          ><button class="mi" id="del" hidden>🗑 Delete case</button>
+        </div>
+        <div id="ct" class="sg" hidden>
+          <h5>Case tools</h5>
+          <button class="mi" id="dx" hidden>⇄ Export / import this case</button>
+          <button class="mi" id="ta" hidden>👥 Assign this case</button>
+          <button class="mi" id="td" hidden>📎 Documents for this case</button>
+          <button class="mi" id="tc" hidden>💬 Comments for this case</button>
+          <button class="mi" id="del" hidden>🗑 Delete case</button>
+        </div>
+        <div class="sg" data-fold>
+          <h5 class="sfold">Account</h5>
+          <button class="mi" id="profile-btn"><span class="ic">👤</span> My Profile</button>
+          <button class="mi" id="account-btn"><span class="ic">⚙</span> Account Settings</button>
+          <button class="mi" id="security-btn"><span class="ic">🔐</span> Security</button>
+          <button class="mi" id="activity-btn"><span class="ic">📝</span> Login Activity</button>
+        </div>
+        <div class="sg" id="admin-group" data-fold hidden>
+          <h5 class="sfold">Administration</h5>
+          <button class="mi" id="user-admin-btn" hidden>
+            <span class="ic">👥</span> Users &amp; Roles
+          </button>
+          <button class="mi" id="audit-btn" hidden><span class="ic">🧾</span> Audit Log</button>
+          <button class="mi" id="ins-master-btn" hidden>
+            <span class="ic">🏛</span> Insurer Master
+          </button>
+          <button class="mi" id="ms"><span class="ic">🎛</span> System Settings</button>
         </div>
         <div class="sf">
           <span class="pill" id="rl"></span>
           <div id="sv" class="mu"></div>
+          <div id="sync" class="mu"></div>
         </div>
-        <button class="mi" id="logout-btn-sidebar" type="button" hidden>⇠ Logout</button>
+        <div class="sg">
+          <button class="mi" id="logout-btn-sidebar" type="button" hidden>⇠ Logout</button>
+        </div>
       </aside>
       <div class="content">
         <header class="top">
-          <button class="b" id="hb">☰</button><strong>Survey Desk</strong>
-          <div
-            class="auth-header-tools"
-            style="margin-left: auto; display: flex; align-items: center; gap: 8px"
-          >
+          <button class="b" id="hb" aria-label="Open navigation">☰</button>
+          <input
+            type="search"
+            id="gs"
+            class="gs"
+            placeholder="Search cases…"
+            aria-label="Search all cases"
+            autocomplete="off"
+          />
+          <div class="top-actions">
+            <button type="button" class="b only-mob" id="mi-mob">⇪ Import</button>
+            <button type="button" class="b p only-mob" id="nw-mob">＋ New</button>
+            <div class="top-pop">
+              <button
+                type="button"
+                class="icbtn"
+                id="notif-btn"
+                aria-label="Notifications"
+                aria-haspopup="true"
+                aria-expanded="false"
+              >
+                🔔<span id="notif-count" class="nbc" hidden>0</span>
+              </button>
+              <div class="pop" id="notif-pop" hidden></div>
+            </div>
+            <div class="top-pop">
+              <button
+                type="button"
+                class="who"
+                id="who-btn"
+                aria-haspopup="true"
+                aria-expanded="false"
+              >
+                <span id="who-name">Guest</span><span class="chev">▾</span>
+              </button>
+              <div class="pop" id="who-pop" hidden></div>
+            </div>
             <span id="auth-user-badge" class="auth-user-badge" hidden></span>
             <button type="button" class="b" id="logout-btn" hidden>Logout</button>
           </div>
         </header>
         <div id="dash"></div>
-        <div class="app" hidden><main id="main"></main></div>
+        <div class="app" hidden>
+          <div id="secbar" class="secbar" role="tablist" aria-label="Report sections"></div>
+          <main id="main"></main>
+        </div>
       </div>
     </div>
     <dialog id="pv" style="width: min(920px, 96vw)">
@@ -133,6 +202,7 @@
 
     <!-- Application scripts (classic scripts, order matters) -->
     <script src="js/01-core.js"></script>
+    <script src="js/insurers-nepal.js"></script>
     <script src="js/02-schema-motor.js"></script>
     <script src="js/03-state-validation.js"></script>
     <script src="js/04-rules-and-nav.js"></script>
@@ -151,6 +221,16 @@
     <script src="js/17-report-paginate.js"></script>
     <script src="js/18-bills-ui.js"></script>
     <script src="js/19-property-assessment.js"></script>
+    <script src="js/20-quick-capture.js"></script>
+    <script src="js/21-all-cases.js"></script>
+    <script src="js/22-header.js"></script>
+    <script src="js/23-third-parties.js"></script>
+    <script src="js/24-case-sync.js"></script>
+    <script src="js/25-assignments.js"></script>
+    <script src="js/26-documents.js"></script>
+    <script src="js/27-comments.js"></script>
+    <script src="js/28-place.js"></script>
+    <script src="js/29-report-qa.js"></script>
     <script src="js/99-main.js"></script>
   </body>
 </html>

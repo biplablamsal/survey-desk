@@ -8,6 +8,8 @@
     "start:ai": "node server.js",
     "db:migrate": "node db/migrate.js",
     "test": "python tests/smoke_test.py",
+    "test:rbac": "node tests/rbac.js",
+    "test:pdf": "node tests/pdf-qa.js",
     "format": "prettier --write \"js/*.js\" css/styles.css index.html"
   },
   "dependencies": {

@@ -159,7 +159,7 @@ async function docxBuild(kind, body, anx) {
     mo = MOD !== MODS.property,
     sg = await getA('sig'),
     stp = await getA('stp'),
-    cv = PH.find((p) => p.cat === 'cov') || PH.find((p) => p.cat === 'iv'),
+    cv = coverIn(cur, PH) || PH.find((p) => p.cat === 'iv'),
     nb = D.TableBorders.NONE;
   const kv = (a, b) =>
     new D.TableRow({
@@ -183,7 +183,7 @@ async function docxBuild(kind, body, anx) {
       children: [
         new R({ text: mo ? 'MOTOR VEHICLE' : 'PROPERTY', bold: true, size: 52 }),
         new R({
-          text: (kind === 'prelim' ? 'PRELIMINARY' : 'FINAL') + ' SURVEY',
+          text: kindCfg(kind).title + ' SURVEY',
           bold: true,
           size: 52,
           break: 1,
@@ -251,10 +251,7 @@ async function docxBuild(kind, body, anx) {
       ],
     }),
   ];
-  const disc = (cfg.disc || DISC)
-    .split('{type}')
-    .join(kind === 'prelim' ? 'preliminary' : 'final')
-    .split('\n\n');
+  const disc = (cfg.disc || DISC).split('{type}').join(kindCfg(kind).word).split('\n\n');
   main.push(
     new P({ heading: HL.HEADING_1, pageBreakBefore: true, children: [new R('Disclaimer')] }),
     ...disc.map(
@@ -468,10 +465,7 @@ function mdBlk(el) {
 async function mdBuild(kind, body, anx) {
   const mo = MOD !== MODS.property,
     o = [
-      '# ' +
-        (mo ? 'MOTOR VEHICLE ' : 'PROPERTY ') +
-        (kind === 'prelim' ? 'PRELIMINARY' : 'FINAL') +
-        ' SURVEY',
+      '# ' + (mo ? 'MOTOR VEHICLE ' : 'PROPERTY ') + kindCfg(kind).title + ' SURVEY',
       '',
       PH.find((p) => p.cat === 'cov') || PH.find((p) => p.cat === 'iv')
         ? '[IMAGE PLACEHOLDER: Cover photo – insured ' + (mo ? 'vehicle' : 'property') + ']'
@@ -491,7 +485,7 @@ async function mdBuild(kind, body, anx) {
       '',
       ...(cfg.disc || DISC)
         .split('{type}')
-        .join(kind === 'prelim' ? 'preliminary' : 'final')
+        .join(kindCfg(kind).word)
         .split('\n\n')
         .flatMap((x) => [x, '']),
       '---',
@@ -529,17 +523,71 @@ async function mdBuild(kind, body, anx) {
   return o.join('\n');
 }
 
-async function doExport(kind, ed, fm, msg) {
-  const dl = window.claude ? await claude.use('downloads') : null;
-  if (!dl) {
-    msg.textContent = 'Saving files is unavailable in this view – open the page inside claude.ai.';
-    return;
+/* A report has to leave the browser in an ordinary tab, on a laptop or a phone, not only through
+   the claude.ai downloads bridge. The bridge is still used when it is present; otherwise the bytes
+   go out as a Blob URL, which is what a real browser download is. */
+async function saveFile(filename, data) {
+  if (window.claude) {
+    const dl = await claude.use('downloads');
+    if (dl) return dl.save({ filename, data });
   }
+  const type = filename.endsWith('.pdf')
+      ? 'application/pdf'
+      : filename.endsWith('.docx')
+        ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        : 'text/plain;charset=utf-8',
+    b = data instanceof Blob ? data : new Blob([data], { type }),
+    url = URL.createObjectURL(b),
+    a = h('a', { href: url, download: filename });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/* One line per report this case has produced, kept on the case.
+   The questions a generation history answers - was this issued, from which design, and what did the
+   file still complain about - belong to the claim, not to a browser's downloads folder, and the case
+   is what this app keeps and syncs. It is capped at twenty per case rather than grown forever: the
+   history is a check on the current report, and the twentieth entry back tells nobody anything the
+   first five do not. */
+function genLog(kind, r) {
+  const L = (Dd.gen = Dd.gen || []);
+  L.unshift({ k: kind, t: r.t, p: r.pages, b: r.bytes, v: r.design, w: r.warn });
+  if (L.length > 20) L.length = 20;
+  sv(1);
+  genPaint(kind);
+}
+
+/* The table under the Export buttons. Painted from the case, so it says the same thing after a
+   reload, after a sync, and on the phone the surveyor left open. */
+function genPaint(kind) {
+  const el = document.querySelector('[data-genhist="' + kind + '"]');
+  if (!el) return;
+  const L = (Dd.gen || []).filter((g) => g.k === kind).slice(0, 5);
+  el.innerHTML = L.length
+    ? '<h4>Generated from this case</h4><table class=account-table><tr><th>When</th><th>Pages</th><th>Size</th><th>Design</th><th>Checks reported</th></tr>' +
+      L.map(
+        (g) =>
+          '<tr><td>' +
+          new Date(g.t).toLocaleString() +
+          '</td><td>' +
+          g.p +
+          '</td><td>' +
+          dvSize(g.b) +
+          '</td><td>v' +
+          esc(g.v) +
+          '</td><td>' +
+          (g.w ? g.w : 'none') +
+          '</td></tr>'
+      ).join('') +
+      '</table>'
+    : '';
+}
+
+async function doExport(kind, ed, fm, msg) {
   const body = clean(ed.innerHTML),
-    base =
-      safeName(g('case_claimNo') || 'case') +
-      (kind === 'prelim' ? '_preliminary' : '_final') +
-      '_report',
+    base = safeName(g('case_claimNo') || 'case') + '_' + kindCfg(kind).file + '_report',
     out = [];
   const er = (l, e) =>
     out.push(
@@ -551,10 +599,7 @@ async function doExport(kind, ed, fm, msg) {
     try {
       if (typeof docx === 'undefined') throw 'lib';
       msg.textContent = 'Building Word file…';
-      await dl.save({
-        filename: base + '.docx',
-        data: await docx.Packer.toBlob(await docxBuild(kind, body, fm.a)),
-      });
+      await saveFile(base + '.docx', await docx.Packer.toBlob(await docxBuild(kind, body, fm.a)));
       out.push('Word file saved');
     } catch (e) {
       er('Word', e);
@@ -562,7 +607,7 @@ async function doExport(kind, ed, fm, msg) {
   }
   if (fm.m) {
     try {
-      await dl.save({ filename: base + '.md', data: await mdBuild(kind, body, fm.a) });
+      await saveFile(base + '.md', await mdBuild(kind, body, fm.a));
       out.push('Markdown saved');
     } catch (e) {
       er('Markdown', e);
@@ -575,79 +620,125 @@ async function doExport(kind, ed, fm, msg) {
     try {
       if (typeof html2pdf === 'undefined') throw 'lib';
       msg.textContent = 'Building report layout…';
-      const { el } = await docBuild(kind, body, fm.a, true),
-        blocks = [...el.children].filter((c) => c.tagName === 'DIV');
-      el.remove();
+      const built = await docBuild(kind, body, fm.a, true),
+        blocks = [...built.el.children].filter((c) => c.tagName === 'DIV'),
+        P = PDF_DESIGN.page,
+        I = PDF_DESIGN.image,
+        jpg = I.encode === 'JPEG',
+        mime = jpg ? 'image/jpeg' : 'image/png',
+        sc = I.scale;
+      built.el.remove();
       document.body.append(wrap);
-      const sc = 1.5,
-        sty = '<style>' + dcss('.dc ') + '</style>',
+      const sty = '<style>' + dcss('.dc ') + '</style>',
         opt = {
-          margin: [8, 12, 8, 12],
-          image: { type: 'jpeg', quality: 0.9 },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          margin: 0,
+          image: { type: mime, quality: 1 },
+          jsPDF: { unit: 'mm', format: [P.w, P.h], orientation: P.orientation },
         };
-      let pdf = null,
-        done = 0;
+      /* One page box in, exactly one A4 page out.
+         The old code gave html2pdf a page margin and then pasted the later pages 5 mm from the
+         left and 10 mm from the top, so page 1 and page 2 of the same report never lined up; the
+         margins are design values now and live inside the page box. Handing the first canvas to
+         html2pdf also let it slice the page itself, and a rounding difference of a hundredth of a
+         millimetre was enough to make it emit a tenth sheet for a nine-sheet report. So the file
+         starts from a blank sheet that is immediately dropped, and every page is placed by this
+         loop at full A4 - which is also what makes the page count a fact rather than a guess. */
+      const blank = document.createElement('canvas');
+      blank.width = 4;
+      blank.height = 4;
+      blank.getContext('2d').fillStyle = PDF_DESIGN.colors.background;
+      blank.getContext('2d').fillRect(0, 0, 4, 4);
+      const pdf = await html2pdf().set(opt).from(blank, 'canvas').toPdf().get('pdf');
+      pdf.deletePage(1);
+      let done = 0;
       const sx0 = window.scrollX,
         sy0 = window.scrollY;
       window.scrollTo(0, 0);
       for (const blk of blocks) {
-        msg.textContent = 'Rendering section ' + ++done + ' of ' + blocks.length + '…';
+        msg.textContent = 'Rendering page ' + ++done + ' of ' + blocks.length + '…';
         const w = h('div', { class: 'dc' });
-        w.style.cssText = 'width:210mm;min-height:297mm;background:#fff';
-        w.innerHTML =
-          sty +
-          '<style>.dc .pb{page-break-before:auto!important;break-before:auto!important}</style>' +
-          blk.outerHTML;
+        w.innerHTML = sty;
+        const page = blk.cloneNode(true);
+        /* .pb carries page-break-before:always for the browser's own print path. html2canvas
+           clones the document and honours that break inside a single element, which doubles the
+           canvas it hands back (measured: 1191x3367 for a 1191x1684 page). Here one page box is
+           already one PDF page, so the break is turned off on the clone before rasterising. */
+        page.style.pageBreakBefore = 'auto';
+        page.style.breakBefore = 'auto';
+        w.append(page);
         wrap.replaceChildren(w);
         await new Promise((r) => setTimeout(r, 40));
         const cv = await html2pdf()
             .set({
-              margin: [8, 12, 8, 12],
-              html2canvas: { scale: sc, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0 },
+              html2canvas: {
+                scale: sc,
+                backgroundColor: PDF_DESIGN.colors.background,
+                scrollX: 0,
+                scrollY: 0,
+              },
             })
             .from(w)
             .toCanvas()
             .get('canvas'),
-          pw = cv.width,
-          sl = Math.round((pw * 297) / 210),
-          HH = Math.min(cv.height, Math.round(w.offsetHeight * sc)),
-          fit = blk.dataset.fit === '1',
-          n = fit ? 1 : Math.max(1, Math.ceil((HH - 3 * sc) / sl));
-        for (let s = 0; s < n; s++) {
-          const c2 = document.createElement('canvas');
-          c2.width = pw;
-          c2.height = fit ? HH : Math.min(sl, HH - s * sl);
-          const cx = c2.getContext('2d');
-          cx.fillStyle = '#fff';
-          cx.fillRect(0, 0, pw, c2.height);
-          cx.drawImage(cv, 0, s * sl, pw, c2.height, 0, 0, pw, c2.height);
-          if (!pdf) pdf = await html2pdf().set(opt).from(c2, 'canvas').toPdf().get('pdf');
-          else {
-            pdf.addPage();
-            {
-              let wm = 210,
-                hm = (c2.height * 210) / pw;
-              if (hm > 297) {
-                wm = (210 * 297) / hm;
-                hm = 297;
-              }
-              pdf.addImage(c2.toDataURL('image/jpeg', 0.9), 'JPEG', 5 + (210 - wm) / 2, 10, wm, hm);
-            }
-          }
-        }
-      }
-      const np = pdf.internal.getNumberOfPages(),
-        PW = pdf.internal.pageSize.getWidth(),
-        PH_ = pdf.internal.pageSize.getHeight();
-      for (let i = 2; i <= np; i++) {
-        pdf.setPage(i);
-        pdf.setFontSize(9);
-        pdf.text(String(i - 1), 112.5, PH_ - 5, { align: 'center' });
+          // the box is A4, so its canvas is one page; anything else would be a layout fault
+          wide = cv.width / cv.height > P.w / P.h ? P.w : (cv.width / cv.height) * P.h,
+          tall = cv.width / cv.height > P.w / P.h ? (cv.height / cv.width) * P.w : P.h;
+        pdf.addPage();
+        pdf.addImage(
+          cv.toDataURL(mime, jpg ? I.quality : 1),
+          jpg ? 'JPEG' : 'PNG',
+          (P.w - wide) / 2,
+          (P.h - tall) / 2,
+          wide,
+          tall
+        );
       }
       window.scrollTo(sx0, sy0);
-      await dl.save({ filename: base + '.pdf', data: pdf.output('arraybuffer') });
-      out.push('PDF saved (' + np + ' pages)');
+      const np = pdf.internal.getNumberOfPages();
+      /* What the file says about itself. The message shown under the Export button is gone as soon
+         as the tab is, but a report that has been printed, mailed and filed for two years is still
+         asked "which layout built this, and when" - so the design version, the claim and the
+         surveyor go into the document information dictionary, where a viewer shows them and
+         pdfFileQA reads them back. A PDF literal in parentheses cannot hold a parenthesis, so the
+         values are stripped first: they come from a form somebody types into. The metadata is
+         written in the Latin-1 a PDF string is, so the joiner is a hyphen and not an em dash. */
+      const meta = (v) =>
+          (v || '')
+            .replace(/[()\\]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim(),
+        who = g('case_surveyor') || profileName();
+      pdf.setProperties({
+        title: meta(kindCfg(kind).label + ' - ' + claimRef()),
+        subject: meta(
+          'Survey Desk report design v' +
+            PDF_DESIGN.version +
+            ' · ' +
+            kindCfg(kind).label +
+            ' · generated ' +
+            new Date().toISOString()
+        ),
+        keywords: meta([claimRef(), g('case_company')].filter(Boolean).join(' - ')),
+        author: meta(who),
+        creator: 'Survey Desk',
+      });
+      const bytes = pdf.output('arraybuffer'),
+        qa = pdfFileQA(bytes, { pages: built.pages }),
+        bad = qa.checks.filter((c) => !c.ok);
+      /* The file is checked after it is written and before it is handed over, because the questions
+         are about the file: a media box, a page tree, a raster that does not cover its sheet. */
+      bad.forEach((c) => out.push('Check: ' + c.name + ' — ' + c.detail));
+      built.warnings.forEach((x) => out.push('Check: ' + x));
+      await saveFile(base + '.pdf', bytes);
+      out.push('PDF saved (' + np + ' pages · design v' + PDF_DESIGN.version + ')');
+      genLog(kind, {
+        kind,
+        pages: np,
+        bytes: bytes.byteLength,
+        design: PDF_DESIGN.version,
+        warn: built.warnings.length + bad.length,
+        t: Date.now(),
+      });
     } catch (e) {
       er('PDF', e);
     }

@@ -18,7 +18,7 @@ function show(f) {
 function reportHTML() {
   const f = (k) => esc(g(k) || '—'),
     dr = issues().some((i) => !i.w);
-  let o = `<div class="mu">${dr ? 'DRAFT – validation issues pending' : ''}</div><h1>${esc(MOD.title)}</h1><table><tr><th>Insurance claim no.</th><td>${f('case_claimNo')}</td><th>Policy number</th><td>${f('case_policyNo')}</td></tr><tr><th>Submitted by</th><td>${f('case_surveyor')}</td><th>Submitted to</th><td>${f('case_company')}</td></tr><tr><th>Survey date</th><td>${esc(dtf(g('case_survey')) || '—')}</td><th>Survey status</th><td>${f('case_status')}</td></tr></table>`;
+  let o = `<div class="mu">${dr ? 'DRAFT – validation issues pending' : ''}</div><h1>${esc(MOD.title)}</h1><table><tr><th>Insurance claim no.</th><td>${f('case_claimNo')}</td><th>Policy number</th><td>${f('case_policyNo')}</td></tr><tr><th>Submitted by</th><td>${f('case_surveyor')}</td><th>Submitted to</th><td>${f('case_company')}</td></tr><tr><th>Survey date</th><td>${esc(dtf(g('case_survey')) || '—')}</td><th>Settlement stage</th><td>${esc(Dd.st || '—')}</td></tr></table>`;
   SECS.filter(vis).forEach((s, i) => {
     o += `<h2>${i + 1}. ${esc(s.t)}</h2>`;
     s.g.forEach((x) => {
@@ -36,6 +36,7 @@ function reportHTML() {
         '<h4>Additional information</h4><table>' +
         cx.map((r) => `<tr><th>${esc(r.l)}</th><td>${esc(r.v)}</td></tr>`).join('') +
         '</table>';
+    if (s.k === 'tp') o += tpTableHTML();
   });
   // (the old 'Annexure – medical bills' block was removed: bills now live in js/18-bills-ui.js)
   return (

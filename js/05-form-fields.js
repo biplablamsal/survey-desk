@@ -22,6 +22,13 @@ function fld(f) {
     }
     if (f.t === C) i.readOnly = true;
     if (f.t === P) i.placeholder = '98XXXXXXXX';
+    if (f.t === LST) {
+      /* A datalist, not a select: the free-text value an older case already saved stays valid
+         and editable, while the master list appears as suggestions as you type. */
+      i.setAttribute('list', 'dl_' + k);
+      i.setAttribute('autocomplete', 'off');
+      i.placeholder = 'Type, or pick from the list';
+    }
     if (f.t === D_) {
       i.readOnly = true;
       i.placeholder = 'Pick date (AD / BS)';
@@ -43,6 +50,9 @@ function fld(f) {
       paint();
       sv(i.tagName === 'SELECT' || i.type === 'checkbox');
       if (k === 'case_claimNo') hdr();
+      /* What the third party consists of decides which questions below apply, so the page has to be
+         built again rather than only re-checked. */
+      if (k === 'tp_kind') render();
     };
     i.onblur = () => {
       TCH.add(k);
@@ -55,6 +65,13 @@ function fld(f) {
     { class: 'fld' + (f.t === A ? ' wide' : '') },
     h('label', { for: i.id }, f.l, f.r ? h('b', { class: 'rq' }, ' *') : ''),
     i,
+    f.t === LST
+      ? h(
+          'datalist',
+          { id: 'dl_' + k },
+          ...(typeof f.o === 'function' ? f.o() : f.o || []).map((o) => h('option', { value: o }))
+        )
+      : '',
     h('small', { id: 'e_' + k }),
     h('small', { class: 'mu', id: 'au_' + k }),
     f.t === D_ ? h('small', { class: 'mu', id: 'bs_' + k }) : '',
@@ -140,11 +157,11 @@ function fld(f) {
 
 function narr() {
   const pl = [g('acc_place'), g('acc_muni')].filter(Boolean).join(', ') || '[location]';
-  let t = `As per the information provided, the accident occurred on ${dtf(g('case_acc')) || '[date]'}${g('case_acc') ? ' (' + bsStr(g('case_acc')).split(' ')[0] + ' BS)' : ''}${g('acc_time') ? ' at ' + t12(g('acc_time')) : ''} at ${pl}. The insured ${Lw(g('fp_type')) || 'vehicle'} (${g('fp_reg') || g('case_insReg') || 'reg. no. pending'}) was reportedly ${Lw(g('acc_mvI')) || '[movement]'}${g('acc_dirI') ? ' while travelling ' + g('acc_dirI') : ''}${hasTP() ? ` when it collided with a third-party ${Lw(g('tp_type')) || 'vehicle'}${g('tp_reg') ? ' (' + g('tp_reg') + ')' : ''}${g('acc_dirT') ? ', ' + Lw(g('acc_dirT')) : ''}` : ''}.`;
+  let t = `As per the information provided, the accident occurred on ${dtf(g('case_acc')) || '[date]'}${g('case_acc') ? ' (' + bsStr(g('case_acc')).split(' ')[0] + ' BS)' : ''}${g('acc_time') ? ' at ' + t12(g('acc_time')) : ''} at ${pl}. The insured ${Lw(g('fp_type')) || 'vehicle'} (${g('fp_reg') || g('case_insReg') || 'reg. no. pending'}) was reportedly ${Lw(g('acc_mvI')) || '[movement]'}${g('acc_dirI') ? ' while travelling ' + g('acc_dirI') : ''}${hasTP() ? ` when it ${tpContact()} ${tpPartyText(0, true)}${tpMore()}` : ''}.`;
   t += ` ${g('acc_vehicles') || '[n]'} vehicle(s) were involved; ${g('acc_injured') || '0'} person(s) reportedly injured and ${g('acc_fatal') || '0'} fatalities. Police informed: ${Lw(g('acc_police')) || 'not recorded'}${g('acc_station') ? ' (' + g('acc_station') + ')' : ''}; police report: ${Lw(g('acc_reportAvail')) || 'not recorded'}.`;
   return t + (g('acc_furtherD') ? ' ' + g('acc_furtherD') : '');
 }
 
 function concl() {
-  return `Based on the preliminary inspection and information obtained, the insured ${Lw(g('fp_type')) || 'vehicle'} (${g('fp_reg') || g('case_insReg') || 'reg. no. pending'}) sustained damage${hasTP() ? ` in a collision with a third-party ${Lw(g('tp_type')) || 'vehicle'}${g('tp_reg') ? ' (' + g('tp_reg') + ')' : ''}` : ' in the reported incident'}${g('acc_cause') ? '; reported cause: ' + Lw(g('acc_cause')) : ''}. ${hasTP() ? `The estimated first-party loss is ${money(g('loss_t1'))} and the third-party loss is ${money(g('loss_t2'))}, giving a total preliminary estimated loss of ${money(g('loss_t3'))}` : `The total preliminary estimated loss is ${money(g('loss_t3'))}`}, subject to supporting documents, verification of medical expenses and applicable policy terms and conditions.`;
+  return `Based on the preliminary inspection and information obtained, the insured ${Lw(g('fp_type')) || 'vehicle'} (${g('fp_reg') || g('case_insReg') || 'reg. no. pending'}) sustained damage${hasTP() ? ` in ${tpCollision()} ${tpPartyText(0)}${tpMore()}` : ' in the reported incident'}${g('acc_cause') ? '; reported cause: ' + Lw(g('acc_cause')) : ''}. ${hasTP() ? `The estimated first-party loss is ${money(g('loss_t1'))} and the third-party loss is ${money(g('loss_t2'))}, giving a total preliminary estimated loss of ${money(g('loss_t3'))}` : `The total preliminary estimated loss is ${money(g('loss_t3'))}`}, subject to supporting documents, verification of medical expenses and applicable policy terms and conditions.`;
 }

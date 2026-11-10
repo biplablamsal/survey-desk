@@ -1,6 +1,18 @@
 node_modules/
 .env
 .env.*
+!.env.example
 .DS_Store
 .vscode/
 *.log
+# Local account records, password hashes and email tokens; the Postgres tables replaced these.
+data/
+
+# Document bytes uploaded through /api/documents: served only behind a session and a case
+# rule, never as static files, and never in the repository.
+uploads/
+
+# Sample reports for `npm run test:pdf`. These are output, not source: the exporter writes them,
+# so a design change is verified by exporting them again rather than by committing a PDF that
+# nobody can reproduce.
+samples/pdf/

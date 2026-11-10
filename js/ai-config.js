@@ -14,20 +14,15 @@
 
    Leave all values empty to keep AI generation disabled; the "Use data-based draft" button still works. */
 const aiHost = window.location && window.location.hostname ? window.location.hostname : 'localhost';
-window.SURVEY_AI_ENDPOINT = `http://${aiHost}:3000/api/generate`;
+/* /api/generate lives on the server that served the page; a fixed port 3000 would be
+   cross-origin anywhere else, and the server only answers same-origin requests. */
+const aiOrigin =
+  window.location.protocol === 'http:' || window.location.protocol === 'https:'
+    ? window.location.origin
+    : `http://${aiHost}:3000`;
+window.SURVEY_AI_ENDPOINT = `${aiOrigin}/api/generate`;
 window.SURVEY_AI_MODEL = 'gemini-3.8-flash';
 window.SURVEY_AI_API_KEY = ''; // backend is preferred for live web use
-
-function getSurveyAuthToken() {
-  try {
-    const raw = localStorage.getItem('survey-desk-auth');
-    if (!raw) return '';
-    const parsed = JSON.parse(raw);
-    return parsed && parsed.token ? parsed.token : '';
-  } catch {
-    return '';
-  }
-}
 
 function normalizeGeminiModel(model) {
   const raw = String(model || 'gemini-3.8-flash')
@@ -54,19 +49,24 @@ function extractGeminiText(data) {
 
 if (window.SURVEY_AI_ENDPOINT) {
   window.SURVEY_AI = async (prompt, opts = {}) => {
-    const token = getSurveyAuthToken();
     const r = await fetch(window.SURVEY_AI_ENDPOINT, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({
         prompt,
         model: normalizeGeminiModel(window.SURVEY_AI_MODEL || 'gemini-3.8-flash'),
       }),
     });
-    if (!r.ok) throw Object.assign(new Error('AI request failed'), { code: 'http_' + r.status });
+    if (!r.ok) {
+      // The server forwards Gemini's own message; without it every failure looks identical here.
+      const err = await r.json().catch(() => ({}));
+      throw Object.assign(new Error((err && err.error) || 'AI request failed (' + r.status + ')'), {
+        code: 'http_' + r.status,
+      });
+    }
     const payload = await r.json();
     const text =
       payload && typeof payload.text === 'string'

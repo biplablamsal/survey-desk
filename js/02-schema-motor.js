@@ -11,7 +11,7 @@ let SECS = [
         [
           F('claimNo', 'Insurance claim no.', T, { r: 1, ...NO }),
           F('policyNo', 'Policy number', T, { r: 1, ...NO }),
-          F('company', 'Insurance company', T, { r: 1 }),
+          F('company', 'Insurance company', LST, { r: 1, o: insurerNames }),
           F('surveyor', 'Surveyor name', T, { r: 1 }),
           F('lic', 'Surveyor licence no.', T, { r: 1, h: 'e.g. 1266/078/79' }),
           F('survey', 'Survey date', D_, { r: 1 }),
@@ -23,20 +23,11 @@ let SECS = [
           }),
           F('loc', 'Accident location', T, { r: 1 }),
           F('insReg', 'Insured vehicle reg. no. (policy)', T, { r: 1, ...REG }),
-          F('tpReg', 'Third-party vehicle reg. no.', T, REG),
-          sel(
-            'status',
-            'Survey status',
-            ['Preliminary Survey', 'Final Survey', 'Spot Survey', 'Re-inspection'],
-            { r: 1 }
-          ),
+          F('tpReg', 'Third-party vehicle reg. no.', T, { ...REG, ks: 'veh' }),
           sel('ctype', 'Claim / loss type', CT, { r: 1 }),
           F('ctypeO', 'If other, describe'),
-          F(
-            'hasTP',
-            'Third party involved (tick to add third-party details to the form and report)',
-            'k'
-          ),
+          /* No "third party involved" tick box: the third-party list on this page is the answer, so
+             the flag cannot disagree with the parties recorded. See js/23-third-parties.js. */
         ],
       ],
     ],
@@ -159,51 +150,74 @@ let SECS = [
     t: '3rd party',
     g: [
       [
+        'Third party – what is involved',
+        [F('kind', 'What this third party consists of', 'mc', { o: TP_KIND_LABELS })],
+        'Tick every kind this party covers. The questions below – and the third-party damage, loss ' +
+          'and bill questions on later pages – follow that answer, so a person hit on foot or a ' +
+          'damaged gate is not asked for a registration number. Nothing here applies to the parties ' +
+          'after this one; each of them answers the same question on the Case information page. ' +
+          'For a person, the injury details are recorded on the Damage – 3rd party page.',
+      ],
+      [
         'Third-party vehicle',
         [
-          F('reg', 'Registration no.', T, REG),
-          sel('type', 'Vehicle type', VT),
-          F('mm', 'Make and model'),
-          F('colour', 'Colour'),
-          F('year', 'Manufacturing year', N, YR),
-          F('eng', 'Engine no.', T, ENG),
-          F('chs', 'Chassis no.', T, ENG),
-          F('loc', 'Current location'),
-          sel('run', 'Running condition', RC),
-          sel('insp', 'Physically inspected', YN),
-          sel('photos', 'Photographs obtained', YN),
-          sel('blue', 'Bluebook available', YNP),
-          sel('est', 'Repair estimate available', YNP),
-          sel('prev', 'Previous damage observed', YN),
-          F('rem', 'Remarks', A),
+          F('reg', 'Registration no.', T, { ...REG, ks: 'veh' }),
+          sel('type', 'Vehicle type', VT, { ks: 'veh' }),
+          F('mm', 'Make and model', T, { ks: 'veh' }),
+          F('colour', 'Colour', T, { ks: 'veh' }),
+          F('year', 'Manufacturing year', N, { ...YR, ks: 'veh' }),
+          F('eng', 'Engine no.', T, { ...ENG, ks: 'veh' }),
+          F('chs', 'Chassis no.', T, { ...ENG, ks: 'veh' }),
+          F('loc', 'Current location', T, { ks: 'veh' }),
+          sel('run', 'Running condition', RC, { ks: 'veh' }),
+          sel('insp', 'Physically inspected', YN, { ks: 'veh' }),
+          sel('photos', 'Photographs obtained', YN, { ks: 'veh' }),
+          sel('blue', 'Bluebook available', YNP, { ks: 'veh' }),
+          sel('est', 'Repair estimate available', YNP, { ks: 'veh' }),
+          sel('prev', 'Previous damage observed', YN, { ks: 'veh' }),
+          F('rem', 'Remarks', A, { ks: 'veh' }),
         ],
       ],
       [
-        'Third-party owner',
+        'Third-party owner (of the vehicle or the property)',
         [
-          nm('oName', 'Owner name'),
-          sel('oType', 'Owner type', OWN),
-          F('addr', 'Address'),
-          F('tel', 'Contact number', P),
-          sel('ownVer', 'Ownership verified', YNP),
-          F('ownDoc', 'Ownership document'),
-          F('oRem', 'Remarks', A),
+          nm('oName', 'Owner name', { ks: ['veh', 'prop'] }),
+          sel('oType', 'Owner type', OWN, { ks: ['veh', 'prop'] }),
+          F('addr', 'Address', T, { ks: ['veh', 'prop'] }),
+          F('tel', 'Contact number', P, { ks: ['veh', 'prop'] }),
+          sel('ownVer', 'Ownership verified', YNP, { ks: ['veh', 'prop'] }),
+          F('ownDoc', 'Ownership document', T, { ks: ['veh', 'prop'] }),
+          F('oRem', 'Remarks', A, { ks: ['veh', 'prop'] }),
         ],
       ],
       [
         'Third-party driver',
         [
-          nm('dName', 'Driver name'),
-          F('dTel', 'Contact number', P),
-          F('dAddr', 'Address'),
-          F('dlNo', 'Driving licence no.', T, DL),
-          F('dlCat', 'Licence categories (tick all held)', 'mc', { o: LC }),
-          F('dlExp', 'Licence expiry date', D_),
-          sel('dlVer', 'Licence verification', VER),
-          F('rel', 'Relationship to owner'),
-          sel('stmt', 'Statement obtained', YN),
-          F('dRem', 'Remarks', A),
+          nm('dName', 'Driver name', { ks: 'veh' }),
+          F('dTel', 'Contact number', P, { ks: 'veh' }),
+          F('dAddr', 'Address', T, { ks: 'veh' }),
+          F('dlNo', 'Driving licence no.', T, { ...DL, ks: 'veh' }),
+          F('dlCat', 'Licence categories (tick all held)', 'mc', { o: LC, ks: 'veh' }),
+          F('dlExp', 'Licence expiry date', D_, { ks: 'veh' }),
+          sel('dlVer', 'Licence verification', VER, { ks: 'veh' }),
+          F('rel', 'Relationship to owner', T, { ks: 'veh' }),
+          sel('stmt', 'Statement obtained', YN, { ks: 'veh' }),
+          F('dRem', 'Remarks', A, { ks: 'veh' }),
         ],
+      ],
+      [
+        'Third-party property',
+        [
+          F('pWhat', 'What the property is', T, { ks: 'prop' }),
+          sel('pType', 'Property type', TP_PROP, { ks: 'prop' }),
+          F('pWhere', 'Where it stands / was kept', T, { ks: 'prop' }),
+          F('pUse', 'How it was used', T, { ks: 'prop' }),
+          sel('pIns', 'Covered by any insurance of its own', YNP, { ks: 'prop' }),
+          F('pRem', 'Remarks', A, { ks: 'prop' }),
+        ],
+        'Anything hit that is not a vehicle and not a person: a gate, a shop front, a pole, goods ' +
+          'spilled from the truck, livestock. The owner of that property is the owner recorded ' +
+          'above.',
       ],
     ],
   },
@@ -241,12 +255,12 @@ let SECS = [
         ],
       ],
       ['Movement – insured vehicle', mv('I')],
-      ['Movement – third-party vehicle', mv('T')],
+      ['Movement – third-party vehicle', mv('T', 'veh')],
       [
         'Statements and findings',
         [
           F('vI', 'Insured driver’s version', A),
-          F('vT', 'Third-party driver’s version', A),
+          F('vT', 'Third-party driver’s version', A, { ks: 'veh' }),
           F('wit', 'Witness statement', A),
           F('pol', 'Police report / record', A),
           F('phys', 'Physical evidence observed', A),
@@ -302,26 +316,43 @@ let SECS = [
       [
         'Third-party vehicle damage',
         [
-          F('date', 'Inspection date', D_),
-          F('place', 'Inspection location'),
-          sel('insp', 'Physically inspected', YN),
-          sel('sev', 'Overall damage severity', SEV),
-          F('area', 'Main impact area'),
-          sel('mech', 'Mechanical damage suspected', MD),
-          sel('struct', 'Structural damage suspected', MD),
-          sel('photos', 'Photographs obtained', YN),
-          sel('est', 'Repair estimate', ['Available', 'Not required', 'Pending']),
-          sel('indep', 'Independent inspection required', YN),
-          F('rem', 'Remarks', A),
+          F('date', 'Inspection date', D_, { ks: 'veh' }),
+          F('place', 'Inspection location', T, { ks: 'veh' }),
+          sel('insp', 'Physically inspected', YN, { ks: 'veh' }),
+          sel('sev', 'Overall damage severity', SEV, { ks: 'veh' }),
+          F('area', 'Main impact area', T, { ks: 'veh' }),
+          sel('mech', 'Mechanical damage suspected', MD, { ks: 'veh' }),
+          sel('struct', 'Structural damage suspected', MD, { ks: 'veh' }),
+          sel('photos', 'Photographs obtained', YN, { ks: 'veh' }),
+          sel('est', 'Repair estimate', ['Available', 'Not required', 'Pending'], { ks: 'veh' }),
+          sel('indep', 'Independent inspection required', YN, { ks: 'veh' }),
+          F('rem', 'Remarks', A, { ks: 'veh' }),
         ],
       ],
       [
-        'Third-party driver injury',
+        'Third-party injury',
         [
-          sel('inj', 'Injury reported', YN),
-          F('desc', 'Injury description'),
-          F('hosp', 'Hospital / treatment centre'),
-          F('med', 'Medical expenses (NPR)', M),
+          sel('inj', 'Injury reported', YN, { ks: 'inj' }),
+          nm('pName', 'Injured person name', { ks: 'inj' }),
+          sel('pWho', 'Who was hit', TP_WHO, { ks: 'inj' }),
+          F('desc', 'Injury description', T, { ks: 'inj' }),
+          F('hosp', 'Hospital / treatment centre', T, { ks: 'inj' }),
+          F('med', 'Medical expenses (NPR)', M, { ks: 'inj' }),
+        ],
+        'A person hit on foot, a rider, a passenger or the driver of the other vehicle is recorded ' +
+          'here: there is no vehicle of their own to describe, so the details start with the person.',
+      ],
+      [
+        'Third-party property damage',
+        [
+          F('pLoc', 'Where the damage is', T, { ks: 'prop' }),
+          sel('pSev', 'Overall damage severity', SEV, { ks: 'prop' }),
+          sel('pPhotos', 'Photographs obtained', YN, { ks: 'prop' }),
+          sel('pEst', 'Repair or replacement estimate', ['Available', 'Not required', 'Pending'], {
+            ks: 'prop',
+          }),
+          sel('pIndep', 'Independent valuation required', YN, { ks: 'prop' }),
+          F('pRem', 'Remarks', A, { ks: 'prop' }),
         ],
       ],
     ],
@@ -344,7 +375,7 @@ let SECS = [
         'Third-party estimated loss (NPR)',
         [
           F('tveh', 'Third-party vehicle', M),
-          F('tinj', 'Third-party driver injury', M),
+          F('tinj', 'Third-party injury (medical)', M),
           F('tpax', 'Third-party passenger injury', M),
           F('toth', 'Other third-party property', M),
           F('t2', 'TOTAL THIRD-PARTY LOSS', C, { sum: ['tveh', 'tinj', 'tpax', 'toth'] }),
@@ -401,14 +432,53 @@ let FM = {};
 
 SECS.forEach((s) => s.F.forEach((f) => (FM[f.k] = f)));
 
-let ALL = [
-  ...SECS,
-  { k: 'photos', t: 'Photos & annexes' },
-  { k: 'bills', t: 'Bills & expenses' },
-  { k: 'report', t: 'Data review' },
-  { k: 'prelim', t: 'Preliminary report' },
-  { k: 'final', t: 'Final report' },
+/* The order a surveyor actually works a claim, and the headings the case navigation is clustered
+   under. Only section identifiers appear here, so field keys, saved data and report mappings are
+   untouched. */
+const WF_GROUPS = [
+  { n: 'Case registration', k: ['case', 'pol', 'fp', 'tp'] },
+  { n: 'Accident & inspection', k: ['acc', 'd1', 'd2', 'photos', 'spot'] },
+  { n: 'Preliminary assessment', k: ['loss', 'prelim'] },
+  { n: 'Final assessment', k: ['bills', 'fin', 'concl'] },
+  { n: 'Report & verification', k: ['report', 'final'] },
 ];
+
+/* Sorts a module's sections by its workflow groups. A section the group list does not mention is
+   appended instead of dropped, so no module can lose a screen through this reordering. */
+function wfOrder(entries, groups) {
+  const left = new Map(entries.map((s) => [s.k, s])),
+    out = [];
+  groups.forEach((gp) =>
+    gp.k.forEach((k) => {
+      const s = left.get(k);
+      if (s) {
+        s.gp = gp.n;
+        out.push(s);
+        left.delete(k);
+      }
+    })
+  );
+  left.forEach((s) => {
+    s.gp = 'Case';
+    out.push(s);
+  });
+  return out;
+}
+
+let ALL = wfOrder(
+  [
+    ...SECS,
+    { k: 'photos', t: 'Photos & annexes' },
+    { k: 'bills', t: 'Bills & expenses' },
+    { k: 'report', t: 'Data review' },
+    /* The on-scene record, written at the inspection rather than after the assessment: two pages,
+       no bills and no final calculation. See REPORT_KINDS in js/13 for what it may contain. */
+    { k: 'spot', t: 'Spot report' },
+    { k: 'prelim', t: 'Preliminary report' },
+    { k: 'final', t: 'Final report' },
+  ],
+  WF_GROUPS
+);
 
 const NAV = [];
 
@@ -428,7 +498,13 @@ const hasTP = () => g('case_hasTP') === 'Yes',
     'acc_impT',
     'acc_aftT',
   ]),
-  hid = (f) => f.k === 'case_accBS' || (TPK.has(f.k) && !hasTP());
+  /* Two reasons a third-party field stops applying: no third party at all, or the party this field
+     describes does not consist of what the field asks about (f.ks, set on the schema). The second
+     one reads the answer recorded on party 1, so a claim that hit a pedestrian is not asked for the
+     other vehicle's chassis number – and a case entered before kinds existed says nothing, keeps
+     every question it was filled in with, and reports exactly as it did. */
+  hid = (f) =>
+    f.k === 'case_accBS' || (TPK.has(f.k) && !hasTP()) || (f.ks && hasTP() && !tpKindOk(f));
 
 SECS.forEach((s) => {
   if (s.k === 'tp' || s.k === 'd2') s.show = hasTP;
@@ -438,7 +514,10 @@ const vis = (s) => !s.show || s.show();
 
 function syncNav() {
   NAV.length = 0;
-  NAV.push(...ALL.filter(vis));
+  /* Every section stays in the list, including the third-party ones when they do not apply: the
+     navigation then reads "N/A" instead of silently dropping two stages, so an absent third party
+     is a stated fact rather than an unfinished section. vis() still governs the fields and issues. */
+  NAV.push(...ALL);
   syncPC();
   if (!NAV.some((s) => s.k === sec)) sec = 'case';
 }

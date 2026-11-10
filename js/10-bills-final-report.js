@@ -123,17 +123,28 @@ function dataText() {
 }
 
 function aiPrompt(kind) {
-  const P = kind === 'prelim',
+  const K = kindCfg(kind),
     mo = MOD === MODS.motor,
-    sec_ = P
-      ? '1 Reference and case summary; 2 Policy details and verification; 3 Insured property/vehicle, owner and driver; 4 Circumstances of the accident/loss with narrative; 5 Damage observations and evidence; 6 Preliminary assessment and estimated loss; 7 Observations, pending documents and next steps; 8 Preliminary conclusion with insurer-ready summary'
-      : mo
-        ? '1 Reference and case summary; 2 Policy details and verification; 3 Circumstances of loss and narrative; 4 Damage findings and inspection observations; 5 Repair and maintenance bills, first party' +
-          (hasTP() ? ' and third party' : '') +
-          ' with billed vs assessed details and remarks; 6 Medical expenses with billed vs assessed details; 7 Surveyor’s final calculation and assessment (reproduce the computed table exactly); 8 Observations, deductions and policy conditions applied; 9 Final conclusion, recommendation and follow-up actions'
-        : '1 Reference and case summary; 2 Policy details; 3 Circumstances of loss and narrative; 4 Damage findings and inspection observations; 5 Assessment of loss; 6 Surveyor’s final calculation and assessment; 7 Observations, deductions and policy conditions applied; 8 Final conclusion and recommendation';
-  return `You are an experienced licensed insurance surveyor in Nepal drafting a ${P ? 'PRELIMINARY' : 'FINAL'} ${MOD.name.replace(' survey', '')} survey report for the insurer.\nRules: use ONLY the facts in the data below. Never invent facts, names, numbers or dates; write "Not provided" where data is missing. Do not do your own arithmetic: use the computed figures given. Formal, neutral, detailed and insurer-ready tone. Amounts in NPR.\nGoal: produce a complete, well-structured survey report, not a short overview. Include every important fact, summary, narration, and calculation. Do not omit relevant details.\nRequired format: clean HTML only (no markdown, no code fences, no html/body tags): one h1 title, numbered h2 section headings, rich paragraphs and short narrative summaries, bulleted lists where helpful, and tables with th/td for financial or factual breakdowns. No images, styles or attributes.\nWrite in a detailed professional style: start with a case summary, then explain the background, policy position, observed loss, assessment reasoning, supporting tables, and final conclusion. Include both summary and narrative writing. Use paragraphs for explanation and tables for amounts, schedules, and comparisons.\nDo not compress it into a brief abstract. The report should read like a complete surveyor’s narrative and summary report used by an insurer.\nSections: ${sec_}.\n\nCASE DATA:\n${dataText()}\n\n${
-    !P && mo
+    sec_ =
+      kind === 'spot'
+        ? '1 Reference and case summary; 2 Policy, vehicle or property as identified at the scene; 3 Circumstances of the loss as reported at the scene; 4 Damage observed on site; 5 Photographs taken on site; 6 Immediate observations, documents still required and recommendation to the insurer'
+        : kind === 'prelim'
+          ? '1 Reference and case summary; 2 Policy details and verification; 3 Insured property/vehicle, owner and driver; 4 Circumstances of the accident/loss with narrative; 5 Damage observations and evidence; 6 Preliminary assessment and estimated loss; 7 Observations, pending documents and next steps; 8 Preliminary conclusion with insurer-ready summary'
+          : mo
+            ? '1 Reference and case summary; 2 Policy details and verification; 3 Circumstances of loss and narrative; 4 Damage findings and inspection observations; 5 Repair and maintenance bills, first party' +
+              (hasTP() ? ' and third party' : '') +
+              ' with billed vs assessed details and remarks; 6 Medical expenses with billed vs assessed details; 7 Surveyor’s final calculation and assessment (reproduce the computed table exactly); 8 Observations, deductions and policy conditions applied; 9 Final conclusion, recommendation and follow-up actions'
+            : '1 Reference and case summary; 2 Policy details; 3 Circumstances of loss and narrative; 4 Damage findings and inspection observations; 5 Assessment of loss; 6 Surveyor’s final calculation and assessment; 7 Observations, deductions and policy conditions applied; 8 Final conclusion and recommendation';
+  return `You are an experienced licensed insurance surveyor in Nepal drafting a ${K.title} ${MOD.name.replace(' survey', '')} survey report for the insurer.\nRules: use ONLY the facts in the data below. Never invent facts, names, numbers or dates; write "Not provided" where data is missing. Do not do your own arithmetic: use the computed figures given. Formal, neutral, detailed and insurer-ready tone. Amounts in NPR.\nGoal: ${
+    kind === 'spot'
+      ? 'a short on-scene record that reads well inside two A4 pages. Be factual and concise: what was seen, what was said, what was photographed. Do NOT write a bills section, a medical expenses section or a final calculation - those belong to the final report and are not allowed here.'
+      : 'produce a complete, well-structured survey report, not a short overview. Include every important fact, summary, narration, and calculation. Do not omit relevant details.'
+  }\nRequired format: clean HTML only (no markdown, no code fences, no html/body tags): one h1 title, numbered h2 section headings, rich paragraphs and short narrative summaries, bulleted lists where helpful, and tables with th/td for financial or factual breakdowns. No images, styles or attributes.\n${
+    kind === 'spot'
+      ? 'Keep every section short - a paragraph or a small table each. Do not compress it into bullet fragments, but do not write at length either.'
+      : 'Write in a detailed professional style: start with a case summary, then explain the background, policy position, observed loss, assessment reasoning, supporting tables, and final conclusion. Include both summary and narrative writing. Use paragraphs for explanation and tables for amounts, schedules, and comparisons.\nDo not compress it into a brief abstract. The report should read like a complete surveyor’s narrative and summary report used by an insurer.'
+  }\nSections: ${sec_}.\n\nCASE DATA:\n${dataText()}\n\n${
+    kind === 'final' && mo
       ? 'BILLS AND ASSESSMENT:\n' +
         billsText() +
         '\n\nCOMPUTED FINAL CALCULATION:\n' +
@@ -145,7 +156,36 @@ function aiPrompt(kind) {
   }PHOTO ANNEXES (captions): ${PH.map((p) => p.cat + (p.cap ? ': ' + p.cap : '')).join('; ') || 'none'}`;
 }
 
+/* The section headings a report type must not carry, applied to a generated draft. This is not the
+   paginator's rule: the draft is new text the surveyor has not written, so leaving a bills table in a
+   spot draft would only teach them to delete it by hand. Saved report text is never touched here -
+   docBuild reports an excluded section instead of cutting it. */
+function dropExcluded(kind, html) {
+  const K = kindCfg(kind),
+    d = new DOMParser().parseFromString(html, 'text/html'),
+    out = [];
+  let skip = false,
+    n = 0;
+  /* A report that runs 5, 6, 8 reads as a page someone lost. The number is part of the heading text,
+     so the sections that stay are counted as they are kept. */
+  const number = (h2) => {
+    const t = [...h2.childNodes].find((c) =>
+      /^[.\s]*\d+[.)]?\s/.test(c.nodeType === 3 ? c.textContent : '')
+    );
+    if (t) t.textContent = t.textContent.replace(/^\s*\d+[.)]?\s/, ++n + '. ');
+  };
+  [...d.body.childNodes].forEach((el) => {
+    if (el.nodeName === 'H2') {
+      skip = K.noHead.some((w) => el.textContent.toLowerCase().includes(w));
+      if (!skip) number(el);
+    }
+    if (!skip) out.push(el.outerHTML || esc(el.textContent || ''));
+  });
+  return out.join('');
+}
+
 function draftHTML(kind) {
+  const K = kindCfg(kind);
   window.NOANX = true;
   let o;
   try {
@@ -153,14 +193,21 @@ function draftHTML(kind) {
   } finally {
     window.NOANX = false;
   }
-  return kind === 'final'
-    ? o.split('PRELIMINARY').join('FINAL') +
-        (MOD === MODS.motor ? '<h2>Bills and final assessment</h2>' + billsHTML() + finTable() : '')
-    : o;
+  /* reportHTML() writes the preliminary template, so PRELIMINARY in its title is the word every
+     other kind renames. */
+  o = o.split('PRELIMINARY').join(K.title);
+  if (K.bills && MOD === MODS.motor)
+    o += '<h2>Bills and final assessment</h2>' + billsHTML() + finTable();
+  /* A report with no cover sheet - a spot report - opens with the identification block the engine
+     writes at the head of page 1, which is the same title and reference table the template puts at
+     the top of the draft. Only the draft is trimmed here: what the surveyor has typed themselves is
+     left for docBuild to report rather than remove. */
+  if (!K.cover) o = o.replace(/<h1>[\s\S]*?<\/table>/, '');
+  return dropExcluded(kind, o);
 }
 
 function genUI(m, kind) {
-  const P = kind === 'prelim',
+  const K = kindCfg(kind),
     R = Dd.rep[kind] || (Dd.rep[kind] = {}),
     msg = h(
       'p',
@@ -203,7 +250,7 @@ function genUI(m, kind) {
       {
         class: 'ai-status ' + (window.SURVEY_AI ? 'live' : 'offline'),
       },
-      window.SURVEY_AI ? 'Gemini live' : 'AI offline'
+      window.SURVEY_AI ? 'Gemini configured' : 'AI offline'
     );
   const ok = () => {
     if (ed.textContent.trim() && !armed) {
@@ -244,7 +291,11 @@ function genUI(m, kind) {
       msg.textContent =
         'AI generation failed' +
         (e && e.code ? ' (' + e.code + ')' : '') +
-        '. You can use the data-based draft.';
+        ': ' +
+        ((e && e.message) || 'unknown error') +
+        ' You can use the data-based draft.';
+      status.className = 'ai-status offline';
+      status.textContent = 'AI failing';
     }
     gen.disabled = false;
   };
@@ -288,13 +339,17 @@ function genUI(m, kind) {
     h(
       'section',
       { class: 'card' },
-      h('h3', {}, P ? 'Preliminary report' : 'Final report'),
+      h('h3', {}, K.label),
       h(
         'p',
         { class: 'mu' },
-        P
-          ? 'Generated from the data entered so far. Edit the draft, save it, then export.'
-          : 'Adds repair & maintenance bills, medical expenses (first and third party) and the surveyor’s final calculation. Enter these under “Bills & expenses” and “Final assessment” first.'
+        K.help +
+          (K.maxPages
+            ? ' The whole document - cover information, every section, the disclaimer and any ' +
+              'photograph annexes - must fit on ' +
+              K.maxPages +
+              ' A4 pages; the layout says which sections are too long if it does not.'
+            : '')
       ),
       h('div', { class: 'bar' }, status, gen, dr, sb),
       msg
@@ -348,13 +403,19 @@ function genUI(m, kind) {
         },
         'Preview layout'
       ),
-      m2
+      m2,
+      /* Filled by genPaint() from the case's own record of what it has produced; empty until this
+         case has generated a report, because a history of nothing is not information. */
+      h('div', { 'data-genhist': kind })
     )
   );
   m.append(pager());
+  genPaint(kind);
 }
 
 MODS.motor.links = [
+  ['case_surveyor', () => profileName()],
+  ['case_lic', () => profileLicence()],
   ['pol_reg', 'case_insReg'],
   ['fp_reg', 'pol_reg', 'case_insReg'],
   ['fp_type', 'pol_vtype'],
@@ -374,7 +435,7 @@ MODS.motor.links = [
         : '',
   ],
   ['acc_place', 'case_loc'],
-  ['acc_vehicles', () => (hasTP() ? '2' : '1')],
+  ['acc_vehicles', () => String(1 + tpVehCount())],
   ['d1_date', 'case_survey'],
   ['d1_place', 'fp_loc'],
   ['d1_name', 'fp_dName'],
@@ -401,6 +462,8 @@ MODS.motor.links = [
 ];
 
 MODS.property.links = [
+  ['case_surveyor', () => profileName()],
+  ['case_lic', () => profileLicence()],
   ['risk_addr', 'case_loc'],
   ['risk_oName', 'pol_insured'],
   ['risk_oTel', 'pol_tel'],

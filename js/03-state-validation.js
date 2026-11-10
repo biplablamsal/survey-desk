@@ -19,7 +19,7 @@ const blank = (mod = 'motor') => ({
   mod,
   cr: Date.now(),
   u: Date.now(),
-  owner: cfg.me,
+  owner: profileName() || cfg.me,
   st: 'Intimation',
   asg: today(),
   due: '',
@@ -29,6 +29,9 @@ const blank = (mod = 'motor') => ({
   hist: [{ s: 'Intimation', t: Date.now() }],
   x: {},
   f: {},
+  tps: [],
+  /* IndexedDB id of the photograph designated as this case's cover; see coverPhotoFor(). */
+  cover: '',
   b: { a: [{ no: '', amt: '' }], b: [{ no: '', amt: '' }] },
 });
 
@@ -41,6 +44,7 @@ function load(id) {
   }
   Dd = DB[cur];
   Dd.b = Dd.b || { a: [], b: [] };
+  Dd.tps = Array.isArray(Dd.tps) ? Dd.tps : [];
   Dd.x = Dd.x || {};
   Dd.rep = Dd.rep || {};
   MOD = MODS[Dd.mod] || MODS.motor;
@@ -50,9 +54,18 @@ function load(id) {
   syncNav();
   recalc();
   PH = [];
-  loadPH().then(() => paint());
+  /* An unsaved burst belongs to the case it was shot for: reset it with the case, so the next
+     case never opens with someone else's frames still stacked under the shutter. */
+  capRestore();
+  loadPH().then(() => {
+    /* IndexedDB answers after the page was built, so the annex list has to be drawn again –
+       otherwise the photos are loaded but the page still shows none of them. */
+    if (sec === 'photos' && PHDRAW) PHDRAW();
+    paint();
+  });
   TCH = new Set();
   SHOW = false;
+  syncProfile();
 }
 
 const g = (k) => (Dd.f[k] || '').trim(),
@@ -77,6 +90,9 @@ function sv(now) {
     $('#sv').textContent = ok
       ? '✓ Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       : 'Storage blocked – export your data';
+    /* The server copy is a follower of this one, never a condition of it: the queue is derived from
+       the data itself, so this is only a reminder to go and look. */
+    if (window.syncSchedule) syncSchedule();
   };
   now ? fn() : (st = setTimeout(fn, 4000));
 }
