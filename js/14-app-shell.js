@@ -103,7 +103,8 @@ function pager() {
   );
 }
 
-function render() {
+function render(options = {}) {
+  const preserveScroll = !!options.preserveScroll;
   const m = $('#main'),
     s = NAV.find((x) => x.k === sec),
     na = !!(s.show && !s.show());
@@ -213,7 +214,10 @@ function render() {
     });
   /* The third-party list belongs to the case itself, not to one module's page, so it sits under
      the case fields whether or not any party has been added yet. */
-  if (sec === 'case' && !na) m.append(tpListUI());
+  if (sec === 'case' && !na) {
+    m.append(tpSummaryUI());
+    m.append(tpListUI());
+  }
   if (s.g) m.append(xUI(s));
   m.append(pager());
   paint();
@@ -221,7 +225,7 @@ function render() {
      phone strip, the pager, a jump from the review list or from Quick Capture — ends in this repaint,
      so this is the one place that can say it. */
   rememberPlace();
-  window.scrollTo(0, 0);
+  if (!preserveScroll) window.scrollTo(0, 0);
 }
 
 function hdr() {
@@ -265,6 +269,9 @@ $('#mc').onclick = () => {
   setMenu('mc');
   closeSideMenu();
 };
+
+/* The case-integrated third-party flow now lives under the case registration and detail pages; the
+   legacy standalone management page has been removed. */
 
 /* The Case operations cluster is a shortcut into the saved views All Cases already owns, so the
    sidebar and the in-page tabs can never disagree about what a view means. The table is named because
@@ -515,21 +522,10 @@ $('#di').onclick = () => {
             }));
         });
     const mid = o.module || c.mod;
-    /* Extra third parties travel with the case record, so an import has to carry them too –
-       re-keyed so two imports can never share a row id. The rows are taken from TPF, the one list
-       of what a party holds, so a party question added there is carried here without a second
-       list to remember. */
-    n.tps = (Array.isArray(c.tps) ? c.tps : [])
-      .slice(0, 40)
-      .map((p, i) =>
-        Object.fromEntries([
-          ['id', 'tp' + Date.now().toString(36) + i],
-          ...TPF.map(([k, , kind]) => [
-            k,
-            String(p[k] ?? '').slice(0, kind === 'a' ? 3000 : kind === 'm' ? 20 : 160),
-          ]),
-        ])
-      );
+    /* Third-party records travel with the case, so an import has to carry them too – re-keyed so
+       two imports can never share a record id, and read through the same list of questions the
+       forms ask, so a question added there is carried here without a second list to remember. */
+    n.tps = tpImportRows(c.tps);
     if (STG.includes(c.st) || OLDMAP[c.st]) n.st = STG.includes(c.st) ? c.st : OLDMAP[c.st];
     n.pSub = String(c.pSub || '').slice(0, 10);
     n.fSub = String(c.fSub || '').slice(0, 10);

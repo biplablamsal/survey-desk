@@ -26,8 +26,12 @@ let SECS = [
           F('tpReg', 'Third-party vehicle reg. no.', T, { ...REG, ks: 'veh' }),
           sel('ctype', 'Claim / loss type', CT, { r: 1 }),
           F('ctypeO', 'If other, describe'),
-          /* No "third party involved" tick box: the third-party list on this page is the answer, so
-             the flag cannot disagree with the parties recorded. See js/23-third-parties.js. */
+          /* Named without its section prefix: this file adds the prefix, and an earlier build that
+             spelled it case_hasTP here left the page writing case_case_hasTP. */
+          sel('hasTP', 'Is any third party involved?', ['Yes', 'No'], {
+            r: 1,
+            h: 'No keeps the third-party records, pages and report sections out of this case; Yes opens them.',
+          }),
         ],
       ],
     ],
@@ -149,15 +153,6 @@ let SECS = [
     k: 'tp',
     t: '3rd party',
     g: [
-      [
-        'Third party – what is involved',
-        [F('kind', 'What this third party consists of', 'mc', { o: TP_KIND_LABELS })],
-        'Tick every kind this party covers. The questions below – and the third-party damage, loss ' +
-          'and bill questions on later pages – follow that answer, so a person hit on foot or a ' +
-          'damaged gate is not asked for a registration number. Nothing here applies to the parties ' +
-          'after this one; each of them answers the same question on the Case information page. ' +
-          'For a person, the injury details are recorded on the Damage – 3rd party page.',
-      ],
       [
         'Third-party vehicle',
         [
@@ -507,7 +502,11 @@ const hasTP = () => g('case_hasTP') === 'Yes',
     f.k === 'case_accBS' || (TPK.has(f.k) && !hasTP()) || (f.ks && hasTP() && !tpKindOk(f));
 
 SECS.forEach((s) => {
-  if (s.k === 'tp' || s.k === 'd2') s.show = hasTP;
+  /* Both detailed pages describe the single party the form could hold when there was only ever
+     room for one. Once the case keeps its third parties as records those pages ask the same
+     questions a second time, and two answers to one question is what the records replaced; they
+     stay exactly as they are until a record is actually filled in. */
+  if (s.k === 'tp' || s.k === 'd2') s.show = () => hasTP() && !tpFilledRecs().length;
 });
 
 const vis = (s) => !s.show || s.show();

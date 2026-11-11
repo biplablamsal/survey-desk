@@ -472,6 +472,22 @@ function initHeader() {
   $('#mi-mob').onclick = () => impOpen();
   $('#nw-mob').onclick = () => openNew();
 
+  /* The section strip pins itself under this bar, and the bar is a flex row that wraps into two lines
+     whenever the window is narrow. A height written into the stylesheet would then either bury the strip
+     beneath the bar or leave a gap of scrolling case between them, so the bar publishes the height it
+     actually has and the strip reads it from --topH. */
+  const topBar = $('header.top');
+  if (topBar) {
+    const setTopH = () =>
+      document.documentElement.style.setProperty(
+        '--topH',
+        Math.round(topBar.getBoundingClientRect().height) + 'px'
+      );
+    setTopH();
+    if (window.ResizeObserver) new ResizeObserver(setTopH).observe(topBar);
+    else addEventListener('resize', setTopH);
+  }
+
   const u = getCurrentAuthUser();
   $('#who-name').textContent = (u && (u.fullName || u.name || u.email)) || 'Guest';
 }

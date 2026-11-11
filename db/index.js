@@ -2304,6 +2304,302 @@ async function caseCommentAudience(caseId) {
   return result.rows.map((row) => row.userId).filter(Boolean);
 }
 
+async function listThirdPartyParties({ caseId = null, q = '' } = {}) {
+  const filters = [];
+  const params = [];
+
+  if (caseId) {
+    params.push(caseId);
+    filters.push(`tp.case_id = $${params.length}`);
+  }
+
+  if (q && String(q).trim()) {
+    const term = `%${String(q).trim()}%`;
+    params.push(term, term, term);
+    filters.push(
+      `(tp.name ILIKE $${params.length - 2} OR tp.contact_number ILIKE $${params.length - 1} OR tp.address ILIKE $${params.length})`
+    );
+  }
+
+  const where = filters.length ? ` WHERE ${filters.join(' AND ')}` : '';
+  const result = await getPool().query(
+    `SELECT tp.id, tp.case_id AS "caseId", tp.party_type AS "partyType", tp.name, tp.contact_number AS "contactNumber",
+            tp.address, tp.email, tp.citizenship_number AS "citizenshipNumber",
+            tp.pan_vat_number AS "panVatNumber", tp.created_at AS "createdAt", tp.updated_at AS "updatedAt"
+     FROM third_party_parties tp${where}
+     ORDER BY tp.updated_at DESC, tp.name ASC`,
+    params
+  );
+
+  const rows = result.rows;
+  for (const row of rows) {
+    const rolesResult = await getPool().query(
+      'SELECT role FROM third_party_party_roles WHERE party_id = $1 ORDER BY role',
+      [row.id]
+    );
+    row.roles = rolesResult.rows.map((item) => item.role);
+  }
+  return rows;
+}
+
+async function upsertThirdPartyParty(payload = {}) {
+  if (!payload || !payload.caseId || !String(payload.name || '').trim()) {
+    throw new Error('A case and party name are required.');
+  }
+
+  const id = payload.id || (await getPool().query('SELECT gen_random_uuid() AS id')).rows[0].id;
+  const name = String(payload.name || '').trim();
+  const contactNumber = payload.contactNumber ? String(payload.contactNumber).trim() : null;
+  const email = payload.email ? String(payload.email).trim() : null;
+  const partyType = payload.partyType || 'Individual';
+
+  const result = await getPool().query(
+    `INSERT INTO third_party_parties (id, case_id, party_type, name, contact_number, address, email,
+       citizenship_number, pan_vat_number, created_by, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+     ON CONFLICT (id) DO UPDATE SET
+       case_id = EXCLUDED.case_id,
+       party_type = EXCLUDED.party_type,
+       name = EXCLUDED.name,
+       contact_number = EXCLUDED.contact_number,
+       address = EXCLUDED.address,
+       email = EXCLUDED.email,
+       citizenship_number = EXCLUDED.citizenship_number,
+       pan_vat_number = EXCLUDED.pan_vat_number,
+       updated_at = NOW()
+     RETURNING *`,
+    [
+      id,
+      payload.caseId,
+      partyType,
+      name,
+      contactNumber,
+      payload.address ? String(payload.address).trim() : null,
+      email,
+      payload.citizenshipNumber ? String(payload.citizenshipNumber).trim() : null,
+      payload.panVatNumber ? String(payload.panVatNumber).trim() : null,
+      payload.createdBy || null,
+    ]
+  );
+
+  const row = result.rows[0];
+  await getPool().query(
+    'DELETE FROM third_party_party_roles WHERE party_id = $1 AND case_id = $2',
+    [row.id, row.case_id]
+  );
+
+  const roles = Array.isArray(payload.roles) ? payload.roles.filter(Boolean) : [];
+  if (roles.length) {
+    const values = roles.map((role, index) => `($1, $2, $${index + 3}, NOW())`).join(', ');
+    await getPool().query(
+      `INSERT INTO third_party_party_roles (party_id, case_id, role, created_at) VALUES ${values}`,
+      [row.id, row.case_id, ...roles]
+    );
+  }
+
+  const saved = {
+    id: row.id,
+    caseId: row.case_id,
+    partyType: row.party_type,
+    name: row.name,
+    contactNumber: row.contact_number,
+    address: row.address,
+    email: row.email,
+    citizenshipNumber: row.citizenship_number,
+    panVatNumber: row.pan_vat_number,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    roles,
+  };
+  return saved;
+}
+
+async function getThirdPartyDashboard({ caseId = null } = {}) {
+  const base = {};
+  const partyResult = await getPool().query(
+    'SELECT COUNT(*)::int AS count FROM third_party_parties' +
+      (caseId ? ' WHERE case_id = $1' : ''),
+    caseId ? [caseId] : []
+  );
+  base.totalParties = Number(partyResult.rows[0].count || 0);
+
+  const claimResult = await getPool().query(
+    'SELECT COUNT(*)::int AS count, COALESCE(SUM(claimed_amount), 0)::numeric AS "totalClaimedAmount" FROM third_party_claims' +
+      (caseId ? ' WHERE case_id = $1' : ''),
+    caseId ? [caseId] : []
+  );
+  const claimRow = claimResult.rows[0] || {};
+  base.totalClaims = Number(claimRow.count || 0);
+  base.totalClaimedAmount = Number(claimRow.totalClaimedAmount || 0);
+
+  const assessmentResult = await getPool().query(
+    `SELECT COALESCE(SUM(CASE WHEN assessment_type IS NOT NULL THEN assessed_total ELSE 0 END), 0)::numeric AS "totalAssessedAmount",
+            COUNT(*) FILTER (WHERE workflow_status IN ('Inspection Pending', 'Under Assessment', 'Assessment Completed'))::int AS "pendingAssessments",
+            COUNT(*) FILTER (WHERE workflow_status = 'Report Submitted')::int AS "reportsPending",
+            COUNT(*) FILTER (WHERE workflow_status = 'Rectification Required')::int AS "rectificationPending"
+     FROM third_party_claims` + (caseId ? ' WHERE case_id = $1' : ''),
+    caseId ? [caseId] : []
+  );
+  const assessmentRow = assessmentResult.rows[0] || {};
+  base.totalAssessedAmount = Number(assessmentRow.totalAssessedAmount || 0);
+  base.pendingAssessments = Number(assessmentRow.pendingAssessments || 0);
+  base.reportsPending = Number(assessmentRow.reportsPending || 0);
+  base.rectificationPending = Number(assessmentRow.rectificationPending || 0);
+
+  const inspectionResult = await getPool().query(
+    'SELECT COUNT(*)::int AS count FROM third_party_claim_inspections WHERE inspection_status = $1' +
+      (caseId ? ' AND claim_id IN (SELECT id FROM third_party_claims WHERE case_id = $2)' : ''),
+    caseId ? ['Inspection pending', caseId] : ['Inspection pending']
+  );
+  base.pendingInspections = Number(inspectionResult.rows[0].count || 0);
+
+  return base;
+}
+
+async function listThirdPartyClaims({ caseId = null } = {}) {
+  const filters = [];
+  const params = [];
+
+  if (caseId) {
+    params.push(caseId);
+    filters.push(`tc.case_id = $${params.length}`);
+  }
+
+  const where = filters.length ? ` WHERE ${filters.join(' AND ')}` : '';
+  const result = await getPool().query(
+    `SELECT tc.id, tc.case_id AS "caseId", tc.claim_reference AS "claimReference", tc.claim_type AS "claimType",
+            tc.damaged_asset AS "damagedAsset", tc.claimed_amount AS "claimedAmount",
+            tc.claim_date AS "claimDate", tc.claim_description AS "description",
+            tc.status, tc.workflow_status AS "workflowStatus",
+            tp.id AS "claimantPartyId", tp.name AS "claimantName",
+            tc.insurance_company AS "insuranceCompany", tc.policy_number AS "policyNumber",
+            tc.insurance_verification_status AS "insuranceVerificationStatus",
+            tc.accident_description AS "accidentDescription",
+            tc.policie_report_number AS "policeReportNumber",
+            tc.investigation_findings AS "investigationFindings",
+            tc.liability_status AS "liabilityStatus", tc.surveyor_remarks AS "surveyorRemarks",
+            tc.created_at AS "createdAt",
+            tc.updated_at AS "updatedAt"
+     FROM third_party_claims tc
+     LEFT JOIN third_party_parties tp ON tp.id = tc.claimant_party_id${where}
+     ORDER BY tc.updated_at DESC`,
+    params
+  );
+
+  const rows = result.rows;
+  for (const row of rows) {
+    const asset = await getPool().query(
+      'SELECT asset_type AS "assetType", asset_data AS "assetData" FROM third_party_claim_assets WHERE claim_id = $1 ORDER BY created_at DESC LIMIT 1',
+      [row.id]
+    );
+    const assessment = await getPool().query(
+      'SELECT * FROM third_party_claim_assessments WHERE claim_id = $1 ORDER BY created_at DESC LIMIT 1',
+      [row.id]
+    );
+    const inspection = await getPool().query(
+      'SELECT * FROM third_party_claim_inspections WHERE claim_id = $1 ORDER BY created_at DESC LIMIT 1',
+      [row.id]
+    );
+    row.asset = asset.rowCount ? asset.rows[0] : null;
+    row.assessment = assessment.rowCount ? assessment.rows[0] : null;
+    row.inspection = inspection.rowCount ? inspection.rows[0] : null;
+  }
+
+  return rows;
+}
+
+async function upsertThirdPartyClaim(payload = {}) {
+  if (!payload || !payload.caseId || !payload.claimType) {
+    throw new Error('A case and claim type are required.');
+  }
+
+  const claimReference =
+    payload.claimReference ||
+    `TP-${String(Date.now()).slice(-6)}-${String(Math.random()).slice(2, 6).toUpperCase()}`;
+
+  const result = await getPool().query(
+    `INSERT INTO third_party_claims (
+      case_id, claim_reference, claimant_party_id, claim_type, damaged_asset, claimed_amount, claim_date,
+      claim_description, status, workflow_status, insurance_company, policy_number, policy_period,
+      insurance_verification_status, accident_description, police_report_available,
+      police_report_number, investigation_findings, liability_status, surveyor_remarks, created_by, created_at, updated_at
+    ) VALUES (
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, NOW(), NOW()
+    ) RETURNING *`,
+    [
+      payload.caseId,
+      claimReference,
+      payload.claimantPartyId || null,
+      payload.claimType,
+      payload.damagedAsset || null,
+      Number(payload.claimedAmount || 0),
+      payload.claimDate || null,
+      payload.description || null,
+      payload.status || 'Registered',
+      payload.workflowStatus || 'Registered',
+      payload.insuranceCompany || null,
+      payload.policyNumber || null,
+      payload.policyPeriod || null,
+      payload.insuranceVerificationStatus || 'Pending Verification',
+      payload.accidentDescription || null,
+      Boolean(payload.policeReportAvailable),
+      payload.policeReportNumber || null,
+      payload.investigationFindings || null,
+      payload.liabilityStatus || 'Undetermined',
+      payload.surveyorRemarks || null,
+      payload.createdBy || null,
+    ]
+  );
+
+  const row = result.rows[0];
+
+  if (payload.asset) {
+    await getPool().query(
+      'INSERT INTO third_party_claim_assets (id, claim_id, asset_type, asset_data, created_at) VALUES (gen_random_uuid(), $1, $2, $3::jsonb, NOW())',
+      [row.id, payload.asset.assetType || 'Property', JSON.stringify(payload.asset)]
+    );
+  }
+
+  if (Array.isArray(payload.assessmentItems) && payload.assessmentItems.length) {
+    const total = payload.assessmentItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    await getPool().query(
+      'INSERT INTO third_party_claim_assessments (id, claim_id, assessment_type, claimed_total, assessed_total, admissible_total, settled_total, items, created_by, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7::jsonb, $8, NOW(), NOW())',
+      [
+        row.id,
+        payload.assessmentType || 'Motor Damage Assessment',
+        Number(payload.claimedAmount || 0),
+        total,
+        total,
+        Number(payload.settledAmount || 0),
+        JSON.stringify(payload.assessmentItems),
+        payload.createdBy || null,
+      ]
+    );
+  }
+
+  if (payload.inspection) {
+    await getPool().query(
+      'INSERT INTO third_party_claim_inspections (id, claim_id, inspection_date, inspection_location, inspected_by, inspection_status, damage_description, surveyor_observations, photographs, inspection_remarks, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, NOW(), NOW())',
+      [
+        row.id,
+        payload.inspection.inspectionDate || null,
+        payload.inspection.inspectionLocation || null,
+        payload.inspection.inspectedBy || null,
+        payload.inspection.status || 'Inspection pending',
+        payload.inspection.damageDescription || null,
+        payload.inspection.surveyorObservations || null,
+        JSON.stringify(payload.inspection.photographs || []),
+        payload.inspection.remarks || null,
+      ]
+    );
+  }
+
+  return listThirdPartyClaims({ caseId: row.case_id }).then(
+    (records) =>
+      records.find((item) => item.id === row.id) || { ...row, claimReference, caseId: row.case_id }
+  );
+}
+
 module.exports = {
   pool,
   query,
@@ -2396,4 +2692,9 @@ module.exports = {
   openDeadlineNotices,
   deleteNotifications,
   caseCommentAudience,
+  listThirdPartyParties,
+  upsertThirdPartyParty,
+  getThirdPartyDashboard,
+  listThirdPartyClaims,
+  upsertThirdPartyClaim,
 };

@@ -119,6 +119,8 @@ function dataText() {
     const cx = ((Dd.x || {})[s.k] || []).filter((r) => r.l || r.v).map((r) => `${r.l}: ${r.v}`);
     if (rows.length || cx.length) o.push(`## ${s.t}\n` + [...rows, ...cx].join('\n'));
   });
+  const tpTxt = typeof tpRecordsText === 'function' ? tpRecordsText() : '';
+  if (tpTxt) o.push(tpTxt);
   return o.concat(MOD === MODS.property && plaHas() ? [plaText()] : []).join('\n\n');
 }
 
@@ -427,13 +429,9 @@ MODS.motor.links = [
   ['fp_tel', 'pol_tel'],
   ['fp_perm', 'pol_addr'],
   ['tp_reg', 'case_tpReg'],
-  [
-    'case_hasTP',
-    () =>
-      ['Third-party liability', 'Own damage + third-party damage'].includes(g('case_ctype'))
-        ? 'Yes'
-        : '',
-  ],
+  /* The third-party question is the surveyor's answer, not something the claim type can be taken
+     to imply: an insured vehicle can hit a parked car on an own-damage claim, and a third-party
+     liability claim can still be a single-vehicle accident. Nothing else fills it in. */
   ['acc_place', 'case_loc'],
   ['acc_vehicles', () => String(1 + tpVehCount())],
   ['d1_date', 'case_survey'],

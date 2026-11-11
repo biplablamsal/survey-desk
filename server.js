@@ -97,6 +97,11 @@ const {
   markCaseCommentsRead,
   caseCommentUnreadCounts,
   caseCommentAudience,
+  listThirdPartyParties,
+  upsertThirdPartyParty,
+  getThirdPartyDashboard,
+  listThirdPartyClaims,
+  upsertThirdPartyClaim,
 } = require('./db');
 
 dotenv.config();

@@ -690,3 +690,136 @@ CREATE INDEX IF NOT EXISTS idx_notifications_actor ON notifications(actor_user_i
 /* The deadline refresh asks one question of the whole inbox at once — what has this person already
    been told about this case and this work — and this is the index that answers it without a scan. */
 CREATE INDEX IF NOT EXISTS idx_notifications_user_type ON notifications(user_id, type, case_id, task_id);
+
+/* ---------------------------------------------------------------------------
+   Third-party management module
+   ---------------------------------------------------------------------------
+   A party master lives once per person or organisation, while the relationship between that party and
+   a particular case is carried in the role table. This keeps a historical case record even when the
+   master data changes, which matches the brief's requirement that the case still preserve who was on
+   it when the event happened. */
+CREATE TABLE IF NOT EXISTS third_party_parties (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+  party_type VARCHAR(20) NOT NULL DEFAULT 'Individual' CHECK (party_type IN ('Individual', 'Organisation')),
+  name VARCHAR(200) NOT NULL,
+  contact_number VARCHAR(60),
+  address TEXT,
+  email VARCHAR(320),
+  citizenship_number VARCHAR(60),
+  pan_vat_number VARCHAR(60),
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS third_party_party_roles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  party_id UUID NOT NULL REFERENCES third_party_parties(id) ON DELETE CASCADE,
+  case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+  role VARCHAR(40) NOT NULL CHECK (role IN (
+    'Owner', 'Driver', 'Claimant', 'Property Owner', 'Tenant', 'Employer', 'Contractor',
+    'Injured Person', 'Legal Representative', 'Other'
+  )),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (party_id, case_id, role)
+);
+
+CREATE INDEX IF NOT EXISTS idx_third_party_parties_case ON third_party_parties(case_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_third_party_roles_party ON third_party_party_roles(party_id);
+CREATE INDEX IF NOT EXISTS idx_third_party_roles_case ON third_party_party_roles(case_id);
+
+CREATE TABLE IF NOT EXISTS third_party_claims (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+  claim_reference VARCHAR(80) NOT NULL UNIQUE,
+  claimant_party_id UUID REFERENCES third_party_parties(id) ON DELETE SET NULL,
+  claim_type VARCHAR(60) NOT NULL,
+  damaged_asset VARCHAR(200),
+  claimed_amount NUMERIC(14,2) NOT NULL DEFAULT 0,
+  claim_date DATE,
+  claim_description TEXT,
+  status VARCHAR(40) NOT NULL DEFAULT 'Registered' CHECK (status IN (
+    'Registered', 'Documents Pending', 'Inspection Pending', 'Under Assessment', 'Assessment Completed',
+    'Report Submitted', 'Rectification Required', 'Resubmitted', 'Closed', 'Withdrawn'
+  )),
+  workflow_status VARCHAR(40) NOT NULL DEFAULT 'Registered' CHECK (workflow_status IN (
+    'Registered', 'Documents Pending', 'Inspection Pending', 'Under Assessment', 'Assessment Completed',
+    'Report Submitted', 'Rectification Required', 'Resubmitted', 'Closed', 'Withdrawn'
+  )),
+  insurance_company VARCHAR(200),
+  policy_number VARCHAR(120),
+  policy_period VARCHAR(120),
+  insurance_verification_status VARCHAR(30) NOT NULL DEFAULT 'Pending Verification' CHECK (
+    insurance_verification_status IN ('Verified', 'Pending Verification', 'Not Available')
+  ),
+  accident_description TEXT,
+  police_report_available BOOLEAN NOT NULL DEFAULT FALSE,
+  police_report_number VARCHAR(80),
+  investigation_findings TEXT,
+  liability_status VARCHAR(30) NOT NULL DEFAULT 'Undetermined' CHECK (
+    liability_status IN ('Undetermined', 'Under Investigation', 'Disputed', 'Findings Recorded')
+  ),
+  surveyor_remarks TEXT,
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS third_party_claim_assets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  claim_id UUID NOT NULL REFERENCES third_party_claims(id) ON DELETE CASCADE,
+  asset_type VARCHAR(40) NOT NULL CHECK (asset_type IN ('Vehicle', 'Property', 'Machinery/Equipment', 'Person')),
+  asset_data JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS third_party_claim_inspections (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  claim_id UUID NOT NULL REFERENCES third_party_claims(id) ON DELETE CASCADE,
+  inspection_date DATE,
+  inspection_location TEXT,
+  inspected_by VARCHAR(200),
+  inspection_status VARCHAR(40) NOT NULL DEFAULT 'Inspection Pending' CHECK (
+    inspection_status IN (
+      'Physical inspection completed', 'Inspection pending', 'Third party unavailable',
+      'Inspection refused', 'Asset already repaired'
+    )
+  ),
+  damage_description TEXT,
+  surveyor_observations TEXT,
+  photographs JSONB NOT NULL DEFAULT '[]',
+  inspection_remarks TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS third_party_claim_assessments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  claim_id UUID NOT NULL REFERENCES third_party_claims(id) ON DELETE CASCADE,
+  assessment_type VARCHAR(60) NOT NULL DEFAULT 'Motor Damage Assessment',
+  claimed_total NUMERIC(14,2) NOT NULL DEFAULT 0,
+  assessed_total NUMERIC(14,2) NOT NULL DEFAULT 0,
+  admissible_total NUMERIC(14,2) NOT NULL DEFAULT 0,
+  settled_total NUMERIC(14,2) NOT NULL DEFAULT 0,
+  items JSONB NOT NULL DEFAULT '[]',
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS third_party_activity_history (
+  id BIGSERIAL PRIMARY KEY,
+  claim_id UUID NOT NULL REFERENCES third_party_claims(id) ON DELETE CASCADE,
+  actor_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  action VARCHAR(80) NOT NULL,
+  details JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_third_party_claims_case ON third_party_claims(case_id, workflow_status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_third_party_claims_party ON third_party_claims(claimant_party_id);
+CREATE INDEX IF NOT EXISTS idx_third_party_claim_assets_claim ON third_party_claim_assets(claim_id);
+CREATE INDEX IF NOT EXISTS idx_third_party_claim_inspections_claim ON third_party_claim_inspections(claim_id, inspection_date);
+CREATE INDEX IF NOT EXISTS idx_third_party_claim_assessments_claim ON third_party_claim_assessments(claim_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_third_party_activity_claim ON third_party_activity_history(claim_id, created_at DESC);

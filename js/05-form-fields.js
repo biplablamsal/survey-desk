@@ -5,14 +5,19 @@ function fld(f) {
   let i;
   const k = f.k;
   if (f.t === 'mc') i = h('input', { type: 'hidden' });
-  else if (f.t === S)
+  else if (f.t === S) {
+    /* A case saved before this answer existed keeps it on the page instead of showing an empty
+       dropdown over an answer that is still there; picking one of the current ones replaces it. */
+    const cur = Dd.f[k] || '',
+      list = f.o.map((o) => [o, o]);
+    if (cur && !f.o.includes(cur)) list.unshift([cur, cur + ' (saved earlier)']);
     i = h(
       'select',
       {},
       h('option', { value: '' }, 'Select…'),
-      ...f.o.map((o) => h('option', { value: o }, o))
+      ...list.map(([v, l]) => h('option', { value: v }, l))
     );
-  else if (f.t === A) i = h('textarea', { rows: f.rows || 3 });
+  } else if (f.t === A) i = h('textarea', { rows: f.rows || 3 });
   else {
     i = h('input', { type: IT[f.t] });
     if (f.t === N || f.t === M) {
@@ -40,24 +45,36 @@ function fld(f) {
   if (f.t === 'k') i.checked = Dd.f[k] === 'Yes';
   else i.value = Dd.f[k] || '';
   if (f.t !== C) {
+    const val = () => (i.type === 'checkbox' ? (i.checked ? 'Yes' : '') : i.value);
     i.oninput = i.onchange = () => {
-      Dd.f[k] = i.type === 'checkbox' ? (i.checked ? 'Yes' : '') : i.value;
+      Dd.f[k] = val();
       (Dd.man = Dd.man || {})[k] = Dd.auto && Dd.auto[k] === Dd.f[k] ? 0 : 1;
       const nAf = autofill();
       if (nAf) toast(nAf + ' related field' + (nAf > 1 ? 's' : '') + ' updated automatically');
       recalc();
-      if (k === 'case_hasTP') syncNav();
+      if (k === 'case_hasTP') {
+        syncNav();
+        render({ preserveScroll: true });
+      }
       paint();
       sv(i.tagName === 'SELECT' || i.type === 'checkbox');
       if (k === 'case_claimNo') hdr();
       /* What the third party consists of decides which questions below apply, so the page has to be
-         built again rather than only re-checked. */
-      if (k === 'tp_kind') render();
+         built again rather than only re-checked. Keep the current scroll position so ticking the
+         involvement type does not force the user back to the top of the case form. */
+      if (k === 'tp_kind') render({ preserveScroll: true });
     };
+    /* Leaving a box is where an answer stops being typing and becomes the case's: the write that has
+       been keeping up with the keystrokes goes in at once, and the surveyor is told which box that was.
+       What the box held when it was entered decides whether anything changed, so tabbing through a form
+       nobody edited stays quiet. */
+    i.onfocus = () => (i._v = val());
     i.onblur = () => {
+      const moved = typeof i._v === 'string' && val() !== i._v;
       TCH.add(k);
       paint();
       sv(1);
+      if (moved) toast(f.l + ' saved', '✓ ');
     };
   }
   const w = h(

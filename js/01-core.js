@@ -6,15 +6,23 @@ const $ = (s) => document.querySelector(s);
 const h = (t, a = {}, ...c) => {
   const e = document.createElement(t);
   for (const k in a) {
-    k === 'class'
-      ? (e.className = a[k])
-      : k.startsWith('on')
-        ? (e[k] = a[k])
-        : // hidden is a boolean attribute: setAttribute writes hidden="false", and the mere presence
-          // of the attribute hides the element, so a conditional "hidden: isAdmin === false" inverts.
-          k === 'hidden'
-          ? (e.hidden = Boolean(a[k]))
-          : e.setAttribute(k, a[k]);
+    if (k === 'class') e.className = a[k];
+    else if (k.startsWith('on')) e[k] = a[k];
+    else if (k === 'hidden') e.hidden = Boolean(a[k]);
+    else if (
+      k === 'checked' ||
+      k === 'selected' ||
+      k === 'disabled' ||
+      k === 'readOnly' ||
+      k === 'multiple' ||
+      k === 'required'
+    ) {
+      e[k] = Boolean(a[k]);
+    } else if (k === 'value') {
+      e.value = a[k];
+    } else {
+      e.setAttribute(k, a[k]);
+    }
   }
   c.flat().forEach((x) => e.append(x && x.nodeType ? x : document.createTextNode(x ?? '')));
   return e;
@@ -127,7 +135,7 @@ const CT = [
    exported case reads without the code table at hand. */
 const TP_KINDS = [
     ['veh', 'Vehicle'],
-    ['inj', 'Person (injury)'],
+    ['inj', 'Person'],
     ['prop', 'Property'],
   ],
   TP_KIND_LABELS = TP_KINDS.map(([, l]) => l);

@@ -603,11 +603,14 @@ header strong {
 }
 .app {
   display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 16px;
+  grid-template-columns: 1fr;
+  gap: 12px;
   max-width: 1150px;
   margin: 0 auto;
   padding: 14px;
+}
+#main {
+  min-width: 0;
 }
 #nav {
   position: sticky;
@@ -640,47 +643,64 @@ header strong {
   font-size: 12px;
   white-space: nowrap;
 }
-/* Phone section switcher: the drawer list is unreachable while a form is open,
-   so the same chips are mirrored into a sticky strip above the content. */
+/* Section switcher: the drawer list is unreachable while a form is open, so the same chips are
+   mirrored into a strip above the content. It sticks on every screen, not only on phones – a
+   seventeen-section case should not need a trip back to the top to change section – and it sticks at
+   the height the header actually has, which --topH carries from js/22-header.js because that bar wraps
+   into two lines on a narrow window. */
 .secbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  padding: 6px 0;
+  background: var(--bg);
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  scrollbar-width: none;
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + var(--topH, 54px));
+  z-index: 19;
+}
+.secbar::-webkit-scrollbar {
   display: none;
 }
-@media (pointer: coarse), (max-width: 768px) {
+.secbar .nv {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  white-space: nowrap;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--bd);
+  border-radius: 999px;
+  background: var(--sf);
+}
+.secbar .nv.on {
+  background: var(--ac);
+  border-color: var(--ac);
+  color: #fff;
+}
+.secbar .nv.on .bd {
+  color: #e6efff;
+}
+/* With a mouse the chips read better one step tighter, the same way the rail's rows do; on a phone
+   they are the only way to change section and stay big enough to hit. */
+@media (pointer: fine) and (min-width: 769px) {
   .secbar {
-    display: flex;
-    gap: 6px;
-    position: sticky;
-    top: calc(env(safe-area-inset-top, 0px) + 62px);
-    z-index: 19;
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-    padding: 6px 0;
-    background: var(--bg);
-    border-bottom: 1px solid var(--bd);
-    scrollbar-width: none;
-  }
-  .secbar::-webkit-scrollbar {
-    display: none;
+    gap: 5px;
+    padding: 4px 0;
   }
   .secbar .nv {
-    flex: 0 0 auto;
-    scroll-snap-align: center;
-    white-space: nowrap;
-    font-size: 14px;
-    padding: 8px 12px;
-    border: 1px solid var(--bd);
-    border-radius: 999px;
-    background: var(--sf);
+    font-size: 12.5px;
+    padding: 5px 9px;
   }
-  .secbar .nv.on {
-    background: var(--ac);
-    border-color: var(--ac);
-    color: #fff;
-  }
-  .secbar .nv.on .bd {
-    color: #e6efff;
+  .secbar .nv-ic {
+    width: 13px;
+    height: 13px;
+    flex-basis: 13px;
   }
 }
 .card {
@@ -689,6 +709,23 @@ header strong {
   border-radius: 10px;
   padding: 12px 14px;
   margin: 0 0 14px;
+}
+.tp-snapshot {
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.tp-snapshot h3 {
+  margin-bottom: 8px;
+}
+.tp-snapshot-grid {
+  gap: 8px 10px;
+}
+.tp-snapshot-card {
+  padding: 8px 10px;
+  margin: 0;
+}
+.tp-snapshot-card .fld {
+  gap: 2px;
 }
 /* One box per additional third party: a case that hit three vehicles should read as three
    records, not as one long run of unlabelled inputs. */
@@ -701,6 +738,81 @@ header strong {
 }
 .tpcard .bar {
   margin: 0 0 8px;
+}
+/* A record is worked block by block – vehicle details, then owner, then driver – so each block
+   needs its own boundary. A nested card would put three borders around one party, so the blocks
+   divide with a rule and an upper-case heading instead. */
+.tpblock {
+  margin: 0 0 12px;
+}
+.tpblock:last-child {
+  margin-bottom: 0;
+}
+.tpblock h4,
+.tp-find h4 {
+  margin: 12px 0 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--bd);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--mu);
+}
+.tpblock .tpblock h4 {
+  margin-top: 8px;
+}
+.tpblock p,
+.tp-find p {
+  margin: 0 0 8px;
+}
+/* A passenger sits inside its vehicle, so it reads as one step lighter and one step in. */
+.tp-sub {
+  background: var(--sf);
+  padding: 8px 10px;
+  margin: 0 0 8px;
+}
+/* Category groups live inside the Third-party information card; the heading and the Add button
+   share the line so the group does not need a title of its own above it. */
+.tpgroup {
+  background: var(--bg);
+  margin: 0 0 12px;
+}
+.tpgroup .bar {
+  margin: 0 0 10px;
+}
+.tpgroup .bar h3 {
+  margin: 0;
+  flex: 1;
+}
+.tp-find {
+  margin: 12px 0 0;
+}
+.tp-find input {
+  margin: 0 0 8px;
+}
+/* Search answers grow without limit while a name is being typed; the strip scrolls instead of
+   pushing the rest of the panel off the screen. */
+.tp-find-list {
+  max-height: 240px;
+  overflow: auto;
+}
+.tp-find-row {
+  margin: 0;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--bd);
+}
+.tp-find-row:last-child {
+  border-bottom: 0;
+}
+.tp-find-row span {
+  flex: 1;
+  min-width: 0;
+}
+.tp-migrate {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--bd);
 }
 
 .settings-panel {

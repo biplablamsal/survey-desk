@@ -51,6 +51,14 @@ function load(id) {
   SECS = MOD.SECS;
   FM = MOD.FM;
   ALL = MOD.ALL;
+  /* The third-party answer, once: an older build wrote the dropdown on the case page under a
+     doubled key, so the answer every reader looks for stayed empty and fell to whatever the claim
+     type was guessed to mean. Move a real answer across, drop the stray, and let no answer at all
+     read as No – a case with no third party is the ordinary case, not an unfinished one. */
+  if (Dd.f.case_case_hasTP && !Dd.f.case_hasTP) Dd.f.case_hasTP = Dd.f.case_case_hasTP;
+  delete Dd.f.case_case_hasTP;
+  if (!Dd.f.case_hasTP) Dd.f.case_hasTP = 'No';
+  tpNormalize();
   syncNav();
   recalc();
   PH = [];

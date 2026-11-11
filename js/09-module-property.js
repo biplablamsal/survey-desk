@@ -65,6 +65,10 @@ const PS = [
           F('acc', 'Date of loss', D_, { r: 1 }),
           F('loc', 'Loss / risk location', T, { r: 1 }),
           sel('ctype', 'Cause of loss', PCT, { r: 1 }),
+          sel('hasTP', 'Is any third party involved?', ['Yes', 'No'], {
+            r: 1,
+            h: 'No keeps the third-party answers out of this case; Yes opens them.',
+          }),
         ],
       ],
     ],

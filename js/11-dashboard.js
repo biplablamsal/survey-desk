@@ -3011,13 +3011,15 @@ function autofill() {
   return ch.length;
 }
 
-function toast(t) {
+/* mark is the leading glyph: the arrow for an answer the app changed by itself, a tick for one the
+   surveyor changed and the app saved. */
+function toast(t, mark) {
   let e = $('#toast');
   if (!e) {
     e = h('div', { id: 'toast', class: 'toast' });
     document.body.append(e);
   }
-  e.textContent = '↺ ' + t;
+  e.textContent = (mark || '↺ ') + t;
   e.classList.add('on');
   clearTimeout(e._t);
   e._t = setTimeout(() => e.classList.remove('on'), 2600);
