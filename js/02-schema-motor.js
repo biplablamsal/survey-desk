@@ -505,9 +505,20 @@ SECS.forEach((s) => {
   /* Both detailed pages describe the single party the form could hold when there was only ever
      room for one. Once the case keeps its third parties as records those pages ask the same
      questions a second time, and two answers to one question is what the records replaced; they
-     stay exactly as they are until a record is actually filled in. */
-  if (s.k === 'tp' || s.k === 'd2') s.show = () => hasTP() && !tpFilledRecs().length;
+     stay exactly as they are while the case still holds answers written that way, until a record
+     takes them over. A case opened after the records existed has neither, so it never sees them. */
+  if (s.k === 'tp' || s.k === 'd2')
+    s.show = () => hasTP() && !tpFilledRecs().length && tpLegacyUsed();
 });
+
+/* Anything the old flat panel or its two detailed pages were ever asked to hold, still holding it.
+   The case-level registration number belongs to a claim type that names a third party, so an older
+   case answered it on the case page and its story is the same one these pages tell. */
+const tpLegacyUsed = () =>
+  !!(Dd.f.case_tpReg || '').trim() ||
+  ['tp', 'd2'].some((sk) =>
+    ((SECS.find((x) => x.k === sk) || {}).F || []).some((f) => (Dd.f[f.k] || '').trim())
+  );
 
 const vis = (s) => !s.show || s.show();
 

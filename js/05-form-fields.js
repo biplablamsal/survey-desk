@@ -124,7 +124,13 @@ function fld(f) {
             const s = new Set(vals());
             c.checked ? s.add(o) : s.delete(o);
             i.value = f.o.filter((x) => s.has(x)).join(', ');
+            /* A tick is the whole answer of a group like this, and the hidden box it writes to is never
+               focused, so the notice a text box gives on leaving is given here instead – and first, so a
+               related field the autofill then moves keeps the more useful message. */
+            toast(f.l + ' saved', '✓ ');
             i.dispatchEvent(new Event('change', { bubbles: true }));
+            TCH.add(k);
+            sv(1);
           };
           return h('label', { class: 'mc' }, c, ' ' + o);
         })
