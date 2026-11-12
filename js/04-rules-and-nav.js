@@ -137,17 +137,17 @@ function navRow(s, is) {
   if (na) bd.append(h('b', { class: 'na' }, 'N/A'));
   else if (!rs.length) {
     // Reports, photos and bills have no fields to tally, so only the issues they raise count.
-    if (e) bd.append(h('b', { class: 'er' }, ' ✖' + e));
-    else if (w) bd.append(h('b', { class: 'wn' }, ' ⚠' + w));
+    if (e) bd.append(h('b', { class: 'er' }, '\u2716' + e));
+    else if (w) bd.append(h('b', { class: 'wn' }, '\u26a0' + w));
     else bd.append(h('i', { class: 'nt' }));
   } else {
-    if (done) bd.append(h('b', { class: 'ok' }, '✓'));
+    if (done) bd.append(h('b', { class: 'ok' }, '\u2713'));
     else {
       if (!started) bd.append(h('i', { class: 'nt' }));
-      bd.append(h('b', { class: started ? 'ct er' : 'ct' }, filled + '/' + rs.length));
-      if (started && (e || bad)) bd.append(h('b', { class: 'er' }, ' ✖' + Math.max(e, bad)));
+      bd.append(h('b', { class: started ? 'nv-ct er' : 'nv-ct' }, filled + '/' + rs.length));
+      if (started && (e || bad)) bd.append(h('b', { class: 'er' }, '\u2716' + Math.max(e, bad)));
     }
-    if (w) bd.append(h('b', { class: 'wn' }, ' ⚠' + w));
+    if (w) bd.append(h('b', { class: 'wn' }, '\u26a0' + w));
   }
 
   const hint = na

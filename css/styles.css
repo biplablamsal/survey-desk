@@ -654,6 +654,7 @@ header strong {
   gap: 6px;
   overflow-x: auto;
   scroll-snap-type: x proximity;
+  scroll-padding-inline: 10px;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   padding: 6px 0;
@@ -665,8 +666,22 @@ header strong {
   top: calc(env(safe-area-inset-top, 0px) + var(--topH, 54px));
   z-index: 19;
 }
+/* The strip is a box with a border, so the first and last chip are inset the way content in a card
+   is: a chip touching the rounded corner reads as clipped rather than as the end of the list. */
+.secbar .nv:first-child {
+  margin-left: 10px;
+}
+.secbar .nv:last-child {
+  margin-right: 10px;
+}
 .secbar::-webkit-scrollbar {
   display: none;
+}
+/* A section name is the only thing that says what a chip opens, and in a strip that scrolls there is
+   no reason to shorten it: the rail truncates because it has a fixed width, the strip does not. */
+.secbar .nv-t {
+  flex: 0 0 auto;
+  overflow: visible;
 }
 .secbar .nv {
   flex: 0 0 auto;
@@ -689,13 +704,32 @@ header strong {
 /* With a mouse the chips read better one step tighter, the same way the rail's rows do; on a phone
    they are the only way to change section and stay big enough to hit. */
 @media (pointer: fine) and (min-width: 769px) {
+  /* Sixteen sections never fit on one line, and a strip that hides its scroll says nothing about
+     that: with a pointer the bar is shown, thin and quiet, so the cut-off chip at the right has an
+     explanation. On touch it stays hidden — a finger does not need a rail to know to swipe. */
   .secbar {
     gap: 5px;
-    padding: 4px 0;
+    padding: 4px 0 8px;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+  .secbar::-webkit-scrollbar {
+    display: block;
+    height: 5px;
+  }
+  .secbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .secbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
   }
   .secbar .nv {
     font-size: 12.5px;
     padding: 5px 9px;
+    /* The 44px floor at the top of this sheet is a thumb target. With a pointer it only makes the
+       strip a third of the content height tall, so the chip drops to what its own line asks for. */
+    min-height: 30px;
   }
   .secbar .nv-ic {
     width: 13px;
@@ -2109,9 +2143,9 @@ header.top #hb {
 }
 .dlgrp {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  white-space: nowrap;
 }
 .chart-grid {
   display: grid;
@@ -2770,13 +2804,39 @@ input[type='radio'] {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  background: var(--sf);
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 .k:hover {
   box-shadow: 0 2px 8px rgba(16, 24, 40, 0.12);
 }
 .k.on {
-  border-color: var(--c);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 30%, transparent);
+  border-color: var(--ac);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+.k.zero {
+  border-color: var(--bd);
+  background: #f8fafc;
+}
+.k.zero .k-ic {
+  background: rgba(148, 163, 184, 0.12);
+  color: #64748b;
+}
+.k.zero b {
+  color: #64748b;
+}
+.k.zero .k-l {
+  color: #475569;
+}
+.k .k-l {
+  color: #334155;
+  font-weight: 600;
+}
+.k .k-ic {
+  border: 1px solid rgba(148, 163, 184, 0.22);
 }
 .g2 {
   display: grid;
@@ -2848,8 +2908,8 @@ input[type='radio'] {
   font-variant-numeric: tabular-nums;
 }
 .wf li.cur .dot {
-  border-color: var(--c);
-  background: var(--c);
+  border-color: var(--ac);
+  background: var(--ac);
   color: #fff;
 }
 .wf li.dn .dot {
@@ -2862,16 +2922,24 @@ input[type='radio'] {
   background: color-mix(in srgb, var(--er) 14%, #fff);
   color: var(--er);
 }
+.wf li:not(.cur):not(.dn):not(.od) .dot {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #94a3b8;
+}
 .wf .lab {
   font-size: 11px;
   line-height: 1.25;
-  color: var(--mu);
+  color: #64748b;
   max-width: 84px;
 }
 .wf li.cur .lab,
 .wf li.on .lab {
   color: var(--tx);
   font-weight: 600;
+}
+.wf li:not(.cur):not(.dn):not(.od) .lab {
+  color: #64748b;
 }
 /* Vertical stage dots on the case screen's own timeline (.tlv) – unrelated to the pipeline above. */
 .dt {
@@ -3763,8 +3831,48 @@ small[id^='au_'] {
 .nv.na {
   opacity: 0.55;
 }
-.bd .ct {
+/* The tally inside a section row is one family: a quiet pill that sits on the label's own line and
+   says, in its colour, whether the section is untouched, wrong or finished. It used to carry the
+   dashboard counter tile's class, which gave every chip a 64px-wide, 44px-tall, red-bordered box,
+   doubled the height of the section strip, and made an unfinished section read as a broken one. */
+.bd > b {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: var(--mu);
   font-variant-numeric: tabular-nums;
+}
+.bd > b.er {
+  color: var(--er);
+  background: #fee2e2;
+}
+.bd > b.wn {
+  color: #b45309;
+  background: #fef3c7;
+}
+.bd > b.ok {
+  color: var(--ok);
+  background: #dcfce7;
+}
+/* The drawer is dark, so the pills are made of the drawer's own light rather than of a paper chip
+   floating on it — the same treatment the N/A badge already has. */
+#side .bd > b {
+  background: rgba(255, 255, 255, 0.14);
+}
+#side .bd > b.er {
+  color: #ffb4b8;
+  background: rgba(220, 38, 38, 0.28);
+}
+#side .bd > b.wn {
+  color: #ffd28a;
+  background: rgba(217, 119, 6, 0.28);
+}
+#side .bd > b.ok {
+  color: #7ee2a8;
+  background: rgba(22, 163, 74, 0.28);
 }
 .bd .na {
   font-size: 10px;

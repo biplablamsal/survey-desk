@@ -74,6 +74,9 @@ function load(id) {
   TCH = new Set();
   SHOW = false;
   syncProfile();
+  /* Everything above is what opening a case does to the case, and none of it is the surveyor
+     changing anything, so it is the picture sv() compares against from here on. */
+  svSeen[cur] = svBody();
 }
 
 const g = (k) => (Dd.f[k] || '').trim(),
@@ -88,8 +91,24 @@ const money = (n) => 'NPR ' + (Number(n) || 0).toLocaleString('en-IN'),
 
 let st;
 
+/* A case is dated when its content changes, not when a device looks at it. `u` is the only thing two
+   copies of a case are compared by, so a stamp earned by nothing more than opening one makes this
+   device the newer copy, hides whatever the other computer actually changed, and then pushes the
+   older version over it. What sv() compares against is what was on the screen when load() finished. */
+let svSeen = {};
+
+/* The case exactly as it would be stored, except for the moment it was stored. */
+function svBody() {
+  if (!Dd) return '';
+  const u = Dd.u;
+  Dd.u = 0;
+  const body = JSON.stringify(Dd);
+  Dd.u = u;
+  return body;
+}
+
 function sv(now) {
-  if (Dd && Dd === DB[cur]) Dd.u = Date.now();
+  if (Dd && Dd === DB[cur] && svBody() !== (svSeen[cur] || '')) Dd.u = Date.now();
   clearTimeout(st);
   $('#sv').textContent = 'Unsaved changes…';
   const fn = () => {

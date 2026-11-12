@@ -13,13 +13,21 @@
 
    The server refuses a write whose `u` is older than what it already holds, so the newest version wins
    in both directions, and a version the server refused is kept rather than dropped — see syncRescue().
+
+   A refusal has two quite different meanings and each has to be answered differently. 409 says the
+   register holds a newer version of this case, which is why syncRescue() keeps ours and takes the
+   server's. 403 and 400 say the register does not hold it at all and will not take it from this device,
+   so nothing has been sent — which is why such a case is written into sp.sync.blocked instead of
+   sp.sync.sent. A case that is only on one device is a fact about that device's data, and saying "synced"
+   over it is how work goes quietly missing when a second computer signs in with the same account.
 */
 
 const SYNC_SENT = 'sp.sync.sent',
   SYNC_SINCE = 'sp.sync.since',
-  SYNC_RESCUE = 'sp.sync.rescued';
+  SYNC_RESCUE = 'sp.sync.rescued',
+  SYNC_BLOCK = 'sp.sync.blocked';
 
-const SYNC = { timer: 0, busy: false, waiting: false };
+const SYNC = { timer: 0, busy: false, waiting: false, denied: '' };
 
 const syncSentMap = () => {
   try {
@@ -28,6 +36,34 @@ const syncSentMap = () => {
     return {};
   }
 };
+
+/* What the server would not take, and the sentence it said when it refused. Kept beside the sent map
+   rather than inside it, because "sent" is a claim about the register and must stay true. */
+const syncBlockedMap = () => {
+  try {
+    return JSON.parse(ST.g(SYNC_BLOCK) || '{}') || {};
+  } catch {
+    return {};
+  }
+};
+
+function syncBlockWrite(map) {
+  ST.s(SYNC_BLOCK, JSON.stringify(map));
+}
+
+function syncBlock(id, error) {
+  const map = syncBlockedMap();
+  map[id] = { at: Date.now(), why: (error && error.message) || 'the server would not take it' };
+  syncBlockWrite(map);
+}
+
+function syncUnblock(id) {
+  const map = syncBlockedMap();
+  if (map[id]) {
+    delete map[id];
+    syncBlockWrite(map);
+  }
+}
 
 const syncSignedIn = () => {
   const auth = window.SurveyAuth && window.SurveyAuth.readAuth();
@@ -39,21 +75,46 @@ const stampOf = (value) => Number(value && value.u) || 0;
 /* Recomputed from the data every time, so nothing can be forgotten by the code that changed it. */
 function syncQueue() {
   const sent = syncSentMap(),
+    blocked = syncBlockedMap(),
     edit = [],
-    remove = [];
+    remove = [],
+    refused = [];
   Object.keys(DB).forEach((id) => {
-    if (stampOf(DB[id]) > Number(sent[id] || 0)) edit.push(id);
+    if (stampOf(DB[id]) <= Number(sent[id] || 0)) return;
+    (blocked[id] ? refused : edit).push(id);
   });
   Object.keys(sent).forEach((id) => {
     if (!DB[id]) remove.push(id);
   });
-  return { edit, remove };
+  return { edit, remove, refused };
 }
 
 function syncRecordSent(id, u) {
   const sent = syncSentMap();
   sent[id] = Number(u) || 0;
   ST.s(SYNC_SENT, JSON.stringify(sent));
+  /* Reaching this line is the proof the refusal no longer stands, wherever it came from: a push that
+     landed, a copy taken down, or a rescue that agreed the server's version. */
+  syncUnblock(id);
+}
+
+/* What the surveyor would have to say to an administrator about a case that did not get through: the
+   case they can see on their own screen, and the server's own reason in its own words. */
+const syncCaseLabel = (id) => {
+  const c = DB[id] || {};
+  return String(c.cn || c.n || id).trim() || id;
+};
+
+function syncRefusedNote(refused) {
+  const map = syncBlockedMap();
+  const row = map[refused[0]] || {};
+  const more = refused.length > 1 ? `, and ${refused.length - 1} more` : '';
+  const why = String(row.why || 'it would not accept it').replace(/[.\s]+$/, '');
+  return (
+    `“${syncCaseLabel(refused[0])}”${more} is saved on this device but the server would not take it. ` +
+    `The server said: ${why}. ` +
+    'No other computer signed in to this account can see it until that is settled.'
+  );
 }
 
 /* The one place the label is written, so a save, a finished flush and a failed one cannot each put a
@@ -71,6 +132,18 @@ function syncPaint() {
   if (SYNC.busy) {
     el.textContent = '⟳ Syncing…';
     el.title = 'Sending and receiving cases.';
+  } else if (waiting.refused.length) {
+    el.textContent = `⚠ ${waiting.refused.length} not on the server`;
+    el.title =
+      syncRefusedNote(waiting.refused) +
+      (SYNC.denied
+        ? ' The server would not let this account read the register either: ' + SYNC.denied
+        : '');
+  } else if (SYNC.denied) {
+    el.textContent = '⚠ Server will not share cases';
+    el.title =
+      SYNC.denied +
+      ' — the cases on this device stay on this device, and the cases on the server stay out of sight. Ask an administrator what this account is allowed to see.';
   } else if (SYNC.waiting) {
     el.textContent = `⚠ ${n} not synced`;
     el.title =
@@ -108,13 +181,18 @@ function syncRescue(id, body) {
     );
 }
 
-async function syncFlush() {
+/* `retry` marks the moments when the server's answer may genuinely have changed — a session starting, a
+   person asking — and a case refused earlier is then offered again. The timed flushes do not retry,
+   because a refusal will not soften by being asked about every half minute. */
+async function syncFlush({ retry = false } = {}) {
   if (!syncSignedIn() || SYNC.busy || !window.SurveyAuth) return;
   const request = (path, options) => window.SurveyAuth.request(path, options);
   clearTimeout(SYNC.timer);
 
-  const queue = syncQueue();
-  if (!queue.edit.length && !queue.remove.length) {
+  const queue = syncQueue(),
+    was = syncBlockedMap(),
+    send = queue.edit.concat(retry ? queue.refused : []);
+  if (!send.length && !queue.remove.length) {
     syncPaint();
     return;
   }
@@ -142,23 +220,31 @@ async function syncFlush() {
     }
   }
 
-  for (const id of queue.edit) {
+  let newlyRefused = 0;
+  for (const id of send) {
     const body = DB[id];
-    if (!body) continue;
+    if (!body) {
+      syncUnblock(id);
+      continue;
+    }
     try {
       await request(`/api/cases/${encodeURIComponent(id)}`, { method: 'PUT', body });
       syncRecordSent(id, body.u);
+      syncUnblock(id);
     } catch (error) {
       if (error.code === 'case_conflict') {
         syncRescue(id, body);
         /* Marking it sent is what stops the same older copy being pushed again on every retry; the
            version that won is then fetched so the two devices agree from here on. */
         syncRecordSent(id, error.serverModifiedAt ? Date.parse(error.serverModifiedAt) : body.u);
+        syncUnblock(id);
         await syncTake(id);
       } else if (error.status === 403 || error.status === 400) {
-        /* The server will keep saying no to this one, so it leaves the queue rather than blocking the
-           cases behind it. The local copy is untouched either way. */
-        syncRecordSent(id, body.u);
+        /* The register does not hold this case and will not take it from this device, so nothing has
+           been sent — and the stamp that says it has is the one thing that must not be written here.
+           The case keeps its place, on this device, with the server's reason kept beside it. */
+        syncBlock(id, error);
+        if (!was[id]) newlyRefused += 1;
       } else {
         /* No answer at all — no signal, no server, a dead battery mid-send. The case stays queued,
            which is the entire point of deriving the queue from the data instead of a list that can be
@@ -172,6 +258,11 @@ async function syncFlush() {
   /* A push overwrites the register's copy, so the next pull is measured from now: measured from
      before, it would answer with the rows just written and merge them back as newer ones. */
   ST.s(SYNC_SINCE, new Date().toISOString());
+  if (newlyRefused && window.toast)
+    window.toast(
+      `${newlyRefused} case${newlyRefused === 1 ? '' : 's'} on this device could not be sent to the server — see the sync status at the top`,
+      '⚠ '
+    );
   syncPaint();
   const left = syncQueue();
   if (left.edit.length || left.remove.length) syncSchedule(30000);
@@ -202,11 +293,41 @@ async function syncTake(id) {
   }
 }
 
-async function syncPull() {
-  const since = ST.g(SYNC_SINCE);
+/* What the register said this account may see, for as long as this page holds that session.
+   Only a full pull answers it: a differential one lists what changed, not what is allowed.
+
+   The screen that scopes a Staff account to its own cases used to decide that from the name written
+   in the case's surveyor box. The server decides it from three facts — the case was opened by this
+   account, this account's name is the one it was assigned to, or somebody handed this account a task
+   on it — and the third of those is nowhere in the case at all. So a staff member whose work had been
+   handed to them in the Assignments screen received the rows from the register, stored them, and then
+   drew an empty dashboard over them. Keeping the server's answer is smaller than teaching the browser
+   to reason about tasks, and it cannot leak: these ids are only ever what this account was told. */
+let SYNC_SCOPE = { user: '', ids: [] };
+
+function syncScopeOf(rows) {
+  const auth = window.SurveyAuth && window.SurveyAuth.readAuth();
+  SYNC_SCOPE = { user: (auth && auth.user && auth.user.id) || '', ids: rows.map((row) => row.id) };
+}
+
+/* Belongs to this session's account because the register handed it over. */
+function syncScoped(id) {
+  return SYNC_SCOPE.ids.indexOf(id) >= 0;
+}
+
+/* `full` asks the register for every case this account may see rather than only the ones touched
+   since this device last spoke to it. The watermark is worth trusting inside one working session, and
+   is not worth trusting across two: it quietly assumes this device already holds every case older than
+   the last contact, and that is untrue on a computer that was switched off when the case was opened,
+   on a shared computer where somebody else has since signed in, and on a case this device was once
+   told no about. In all three the answer used to be "nothing to bring down", the dashboard stayed as
+   it was, and the label still read Synced. */
+async function syncPull({ full = false } = {}) {
+  const since = full ? '' : ST.g(SYNC_SINCE);
   const query = since ? `?payload=1&since=${encodeURIComponent(since)}` : '?payload=1';
   const payload = await window.SurveyAuth.request(`/api/cases${query}`);
   const rows = Array.isArray(payload.cases) ? payload.cases : [];
+  if (full) syncScopeOf(rows);
   let changed = 0;
   rows.forEach((row) => {
     const incoming = row.payload;
@@ -234,20 +355,34 @@ async function syncSessionReady() {
     return;
   }
   SYNC.busy = true;
+  SYNC.denied = '';
   syncPaint();
   let changed = 0;
   try {
-    changed = await syncPull();
-    SYNC.busy = false;
-    await syncFlush();
+    changed = await syncPull({ full: true });
+  } catch (error) {
+    /* A refusal to read the register is not a lost connection, and the two need different answers: one
+       is worth waiting for, the other is a conversation with an administrator. */
+    if (error && (error.status === 403 || error.status === 400))
+      SYNC.denied = error.message || 'The server would not let this account read the register.';
+    else SYNC.waiting = true;
+  }
+  SYNC.busy = false;
+  /* Sending follows reading, but it is not gated on it. A device whose account may file cases but not
+     browse the register still has to get its own cases onto the server, and until now a pull that was
+     refused stopped every push behind it, so a whole computer's work never left that computer. */
+  try {
+    /* A session is where an administrator's decision can arrive, so a case this device was told no
+       about is offered again here rather than on a timer. */
+    await syncFlush({ retry: true });
   } catch {
-    /* No register, no server, no signal: everything stays local and the label says so. The data is
-       the queue, so the next save, the next bar of signal or the next reload tries again. */
-    SYNC.busy = false;
     SYNC.waiting = true;
   }
   syncPaint();
-  if (changed) {
+  /* The screens were first drawn from whatever this device held, before the register had answered. A
+     full pull can change what belongs on them without changing a single case, because for a scoped
+     account the answer itself is the list — so the answer alone is a reason to draw again. */
+  if (changed || SYNC_SCOPE.ids.length) {
     if (cur && DB[cur]) load(cur);
     else if (window.drawDash) drawDash();
   }
@@ -260,3 +395,4 @@ addEventListener('offline', syncPaint);
 
 window.syncSchedule = syncSchedule;
 window.syncSessionReady = syncSessionReady;
+window.syncScoped = syncScoped;

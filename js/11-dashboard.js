@@ -91,7 +91,15 @@ const isMine = (c) => {
   dN = (s) => Math.floor(Date.parse(s) / 864e5),
   iso = (n) => new Date(n * 864e5).toISOString().slice(0, 10),
   tdN = () => dN(today()),
-  vc = () => Object.values(DB).filter((c) => cfg.role !== 'Staff' || isMine(c));
+  /* The name in a case's surveyor box is all this device can tell about it. The register answers for
+     three facts it knows and the box cannot show, one of them being a task handed to this account, so
+     either the name or the server's own list makes a case this account's own. A case the server kept
+     back is never on that list, so nothing here widens what an account is allowed to see. */
+  vc = () =>
+    Object.values(DB).filter(
+      (c) =>
+        cfg.role !== 'Staff' || isMine(c) || (window.syncScoped ? window.syncScoped(c.id) : false)
+    );
 
 function addD(s, n) {
   let d = dN(s);
@@ -2786,13 +2794,14 @@ function buildDash() {
     h(
       'div',
       { class: 'kp' },
-      ...KP.map(([k, l, c, ic, t]) =>
-        h(
+      ...KP.map(([k, l, c, ic, t]) => {
+        const total = V.filter((r) => t(r.c)).length;
+        return h(
           'button',
           {
             type: 'button',
-            class: 'k' + (FL.k === k ? ' on' : ''),
-            style: '--c:' + c,
+            class: 'k' + (FL.k === k ? ' on' : '') + (total === 0 ? ' zero' : ''),
+            style: '--c:' + (total === 0 ? '#94a3b8' : c),
             title: 'Filter the list below to ' + l.toLowerCase(),
             onclick: () => setF(FL.k === k ? '' : k, ''),
           },
@@ -2802,10 +2811,10 @@ function buildDash() {
             h('span', { class: 'k-ic' }, ic),
             h('span', { class: 'k-go' }, '→')
           ),
-          h('b', {}, V.filter((r) => t(r.c)).length),
+          h('b', {}, total),
           h('span', { class: 'k-l' }, l)
-        )
-      )
+        );
+      })
     ),
     h(
       'div',

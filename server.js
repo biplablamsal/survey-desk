@@ -2080,10 +2080,28 @@ async function canAccessCase(row, user, permissions) {
   return await isTaskAssigneeOnCase(row.id, user.id);
 }
 
+/* A refusal a screen never shows is a refusal nobody can find afterwards. The register is the place a
+   case either is or is not, so every door of it notes on the server's own log who was turned away, from
+   where, and under which rule — which is exactly the question "why does the other computer show
+   nothing" asks. Nothing here decides anything: it only writes down what was already decided. */
+const logCaseRefusal = (req, route, reason, caseId) => {
+  const user = req.user || {};
+  console.warn(
+    `[cases] ${route} refused (${reason}) case=${caseId || '-'} user=${user.id || 'none'} role=${
+      user.role || '-'
+    } ip=${req.ip || '-'}`
+  );
+};
+
 app.get('/api/cases', requireAuth, async (req, res) => {
   const permissions = req.permissions || new Set(await loadPermissions(req.user));
   const scope = caseVisibility(permissions);
   if (!scope) {
+    logCaseRefusal(
+      req,
+      'GET /api/cases',
+      'no case-view permission (needs view_all_cases or view_assigned_cases)'
+    );
     return res.status(403).json({
       error: 'Your account is not permitted to view cases.',
       code: 'permission_denied',
@@ -2131,6 +2149,7 @@ app.get('/api/cases/:id', requireAuth, async (req, res) => {
 
   req.permissions = req.permissions || new Set(await loadPermissions(req.user));
   if (!(await canAccessCase(row, req.user, req.permissions))) {
+    logCaseRefusal(req, 'GET /api/cases/:id', 'case outside this account', req.params.id);
     return res
       .status(403)
       .json({ error: 'That case is not yours to open.', code: 'case_forbidden' });
@@ -2166,6 +2185,7 @@ app.put('/api/cases/:id', requireAuth, async (req, res) => {
   const creating = !existing;
   const permission = creating ? 'create_case' : 'edit_case_details';
   if (!req.permissions.has(permission)) {
+    logCaseRefusal(req, 'PUT /api/cases/:id', `account lacks ${permission}`, id);
     return res.status(403).json({
       error: creating
         ? 'Your account is not permitted to open new cases.'
@@ -2175,6 +2195,7 @@ app.put('/api/cases/:id', requireAuth, async (req, res) => {
     });
   }
   if (existing && !(await canAccessCase(existing, req.user, req.permissions))) {
+    logCaseRefusal(req, 'PUT /api/cases/:id', 'case outside this account', id);
     return res
       .status(403)
       .json({ error: 'That case is not yours to edit.', code: 'case_forbidden' });
