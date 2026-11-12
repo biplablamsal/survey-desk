@@ -754,10 +754,10 @@ function tpMigrateUI() {
     h(
       'p',
       { class: 'mu' },
-      'This case describes its third party on the 3rd party and Damage – 3rd party pages. Those ' +
-        'pages stay as they are, and nothing here changes them. Moving the answers into records ' +
-        'lets the case hold more than one party, and each party is then asked only its own ' +
-        'questions.'
+      'This case describes its third party in the flat forms – on this page and on the Damage – 3rd ' +
+        'party page. Those pages stay as they are, and nothing here changes them. Moving the answers ' +
+        'into records lets the case hold more than one party, and each party is then asked only its ' +
+        'own questions.'
     ),
     h(
       'button',

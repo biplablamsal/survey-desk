@@ -13,6 +13,9 @@
 
    The server refuses a write whose `u` is older than what it already holds, so the newest version wins
    in both directions, and a version the server refused is kept rather than dropped — see syncRescue().
+   A pull decides the same thing from the same number and used to keep nothing: the guard in syncPull()
+   makes it rescue what it overrules instead, because that number is a claim about a date, not a proof
+   that the server's copy knows more.
 
    A refusal has two quite different meanings and each has to be answered differently. 409 says the
    register holds a newer version of this case, which is why syncRescue() keeps ours and takes the
@@ -25,7 +28,8 @@
 const SYNC_SENT = 'sp.sync.sent',
   SYNC_SINCE = 'sp.sync.since',
   SYNC_RESCUE = 'sp.sync.rescued',
-  SYNC_BLOCK = 'sp.sync.blocked';
+  SYNC_BLOCK = 'sp.sync.blocked',
+  SYNC_HELD = 'sp.sync.held';
 
 const SYNC = { timer: 0, busy: false, waiting: false, denied: '' };
 
@@ -65,6 +69,38 @@ function syncUnblock(id) {
   }
 }
 
+/* What this device was made to set aside, per case, and for as long as the register has not been given
+   that work back. See the guard in syncPull(): the server's copy won on its stamp, our version went
+   into sp.sync.rescued, and neither of those facts is something a surveyor can see on the case page —
+   so they are written down here rather than being said once and then believed solved.
+
+   Kept out of sp.sync.sent and sp.sync.blocked, which both describe what the register did with a
+   version this device tried to send. This describes a version it never tried, because the code did not
+   ask it to. */
+const syncHeldMap = () => {
+  try {
+    return JSON.parse(ST.g(SYNC_HELD) || '{}') || {};
+  } catch {
+    return {};
+  }
+};
+
+function syncHold(id) {
+  const map = syncHeldMap();
+  map[id] = { at: Date.now() };
+  ST.s(SYNC_HELD, JSON.stringify(map));
+}
+
+/* Only a push that landed clears it: that is the one event proving the register now holds the work. A
+   newer copy arriving from elsewhere proves nothing about ours, so a pull never clears it. */
+function syncUnhold(id) {
+  const map = syncHeldMap();
+  if (map[id]) {
+    delete map[id];
+    ST.s(SYNC_HELD, JSON.stringify(map));
+  }
+}
+
 const syncSignedIn = () => {
   const auth = window.SurveyAuth && window.SurveyAuth.readAuth();
   return Boolean(auth && auth.user);
@@ -99,10 +135,14 @@ function syncRecordSent(id, u) {
 }
 
 /* What the surveyor would have to say to an administrator about a case that did not get through: the
-   case they can see on their own screen, and the server's own reason in its own words. */
+   case they can see on their own screen, and the server's own reason in its own words.
+
+   The number is the one every other screen reads, and it lives inside the answers, not beside them:
+   this used to look for c.cn and c.n, which no case object has ever carried, so each notice named the
+   case by its id — the one string in the app a surveyor has never been shown. */
 const syncCaseLabel = (id) => {
   const c = DB[id] || {};
-  return String(c.cn || c.n || id).trim() || id;
+  return String((c.f && c.f.case_claimNo) || c.cn || id).trim() || id;
 };
 
 function syncRefusedNote(refused) {
@@ -114,6 +154,18 @@ function syncRefusedNote(refused) {
     `“${syncCaseLabel(refused[0])}”${more} is saved on this device but the server would not take it. ` +
     `The server said: ${why}. ` +
     'No other computer signed in to this account can see it until that is settled.'
+  );
+}
+
+/* The sentence for a case the register overruled on paper: what happened to each of the two versions,
+   and the one action that puts the lost work back where it belongs. */
+function syncHeldNote(held) {
+  const more = held.length > 1 ? `, and ${held.length - 1} more` : '';
+  return (
+    `“${syncCaseLabel(held[0])}”${more} was changed here after the version on the register was last ` +
+    'updated there, so the register has the newer date and its copy is the one on screen. Your version ' +
+    'is kept on this device and the server has never seen it. Open the case and write those answers in ' +
+    'again: the next save goes to the server and clears this notice.'
   );
 }
 
@@ -129,6 +181,7 @@ function syncPaint() {
   }
   const waiting = syncQueue();
   const n = waiting.edit.length + waiting.remove.length;
+  const held = Object.keys(syncHeldMap()).filter((id) => DB[id]);
   if (SYNC.busy) {
     el.textContent = '⟳ Syncing…';
     el.title = 'Sending and receiving cases.';
@@ -148,6 +201,12 @@ function syncPaint() {
     el.textContent = `⚠ ${n} not synced`;
     el.title =
       'SurveyPro could not reach the server. The cases are saved on this device and will be sent again.';
+  } else if (held.length) {
+    /* Ahead of both "to sync" and "Synced", because a case the register overruled is not queued and
+       nothing else on this device is pending — so of those two, the label would have picked "Synced"
+       and said it over the one piece of work that never reached the server. */
+    el.textContent = `⚠ ${held.length} local ${held.length === 1 ? 'copy' : 'copies'} kept`;
+    el.title = syncHeldNote(held);
   } else if (n) {
     el.textContent = `→ ${n} to sync`;
     el.title = 'Saved here, waiting to be sent.';
@@ -231,6 +290,8 @@ async function syncFlush({ retry = false } = {}) {
       await request(`/api/cases/${encodeURIComponent(id)}`, { method: 'PUT', body });
       syncRecordSent(id, body.u);
       syncUnblock(id);
+      /* The register now holds this device's work, which is what the held notice was about. */
+      syncUnhold(id);
     } catch (error) {
       if (error.code === 'case_conflict') {
         syncRescue(id, body);
@@ -328,6 +389,17 @@ async function syncPull({ full = false } = {}) {
   const payload = await window.SurveyAuth.request(`/api/cases${query}`);
   const rows = Array.isArray(payload.cases) ? payload.cases : [];
   if (full) syncScopeOf(rows);
+  /* Which of this device's cases the register has never accepted, read before anything is overwritten.
+
+     Two shapes put a case in that list while the register still wins the date: the ordinary one, where
+     the same case was worked on two computers and the other one sent first, and the one that was
+     never meant to happen — the build fixed in #132 re-stamped a case every time it was opened, so the
+     register could hold a row dated after a surveyor's own copy while holding fewer answers than it.
+     Comparing dates alone then buried that afternoon of work: the audit trail kept the write but no
+     version of the answers, so nothing on either side of the network could have shown it or brought it
+     back. Both shapes now keep what they displaced. */
+  const queue = syncQueue(),
+    neverSent = queue.edit.concat(queue.refused);
   let changed = 0;
   rows.forEach((row) => {
     const incoming = row.payload;
@@ -337,6 +409,15 @@ async function syncPull({ full = false } = {}) {
        is about to be told, not because somebody else wrote it. */
     const mine = DB[row.id];
     if (mine && stampOf(mine) >= stampOf(incoming)) return;
+    /* The register's date still wins, and that is right: ours would be refused on every push while
+       its own is later, so putting ours on screen instead would lock this case out of syncing for
+       good. What changes is that the copy giving way is kept and said out loud rather than dropped —
+       syncRescue() stores it here, and syncHold() keeps the notice up until a save from this device
+       puts those answers back on the register. */
+    if (mine && neverSent.indexOf(row.id) >= 0) {
+      syncRescue(row.id, mine);
+      syncHold(row.id);
+    }
     DB[row.id] = incoming;
     syncRecordSent(row.id, incoming.u);
     changed += 1;

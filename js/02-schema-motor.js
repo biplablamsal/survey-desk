@@ -493,22 +493,31 @@ const hasTP = () => g('case_hasTP') === 'Yes',
     'acc_impT',
     'acc_aftT',
   ]),
-  /* Two reasons a third-party field stops applying: no third party at all, or the party this field
-     describes does not consist of what the field asks about (f.ks, set on the schema). The second
-     one reads the answer recorded on party 1, so a claim that hit a pedestrian is not asked for the
-     other vehicle's chassis number – and a case entered before kinds existed says nothing, keeps
-     every question it was filled in with, and reports exactly as it did. */
+  /* The questions the pre-record third-party pages asked: one flat set for a single party, instead
+     of one form per party. They still apply to exactly one kind of case – an old one whose answers
+     were written that way and that no record has taken over yet. */
+  tpFlat = (f) => f.k.startsWith('tp_') || f.k.startsWith('d2_'),
+  tpFlatOn = () => tpLegacyUsed() && !tpFilledRecs().length,
+  /* Three reasons a field stops applying: it is retired outright; there is no third party at all; or
+     the party this field describes does not consist of what the field asks about (f.ks, set on the
+     schema). The last one reads the answer recorded on party 1, so a claim that hit a pedestrian is
+     not asked for the other vehicle's chassis number – and a case entered before kinds existed says
+     nothing, keeps every question it was filled in with, and reports exactly as it did. The fourth
+     is the flat third-party set: once the case describes its parties one form per party, the flat
+     questions would ask the same thing a second time, and a section cannot be both. */
   hid = (f) =>
-    f.k === 'case_accBS' || (TPK.has(f.k) && !hasTP()) || (f.ks && hasTP() && !tpKindOk(f));
+    f.k === 'case_accBS' ||
+    (TPK.has(f.k) && !hasTP()) ||
+    (f.ks && hasTP() && !tpKindOk(f)) ||
+    (tpFlat(f) && !tpFlatOn());
 
 SECS.forEach((s) => {
-  /* Both detailed pages describe the single party the form could hold when there was only ever
-     room for one. Once the case keeps its third parties as records those pages ask the same
-     questions a second time, and two answers to one question is what the records replaced; they
-     stay exactly as they are while the case still holds answers written that way, until a record
-     takes them over. A case opened after the records existed has neither, so it never sees them. */
-  if (s.k === 'tp' || s.k === 'd2')
-    s.show = () => hasTP() && !tpFilledRecs().length && tpLegacyUsed();
+  /* The 3rd party page is the case's third parties, and the categories with one form per party are
+     rendered there, so the page applies as soon as a third party is recorded – whether or not this
+     case also has flat answers from before. */
+  if (s.k === 'tp') s.show = () => hasTP();
+  /* Damage – 3rd party is still only ever filled in the old way, so it keeps the old rule. */
+  if (s.k === 'd2') s.show = () => hasTP() && tpFlatOn();
 });
 
 /* Anything the old flat panel or its two detailed pages were ever asked to hold, still holding it.

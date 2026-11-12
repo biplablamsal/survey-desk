@@ -212,9 +212,9 @@ function render(options = {}) {
           )
         );
     });
-  /* The third-party list belongs to the case itself, not to one module's page, so it sits under
-     the case fields whether or not any party has been added yet. */
-  if (sec === 'case' && !na) {
+  /* The categories and the individual party forms are the 3rd party section's own work, so they are
+     rendered on that page rather than at the bottom of the case fields. */
+  if (sec === 'tp' && !na) {
     m.append(tpSummaryUI());
     m.append(tpListUI());
   }
