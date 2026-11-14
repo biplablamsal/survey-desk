@@ -229,6 +229,8 @@ const sanitizeUser = (user) => ({
   isActive: Boolean(user.is_active),
   avatarUrl: user.avatar_url || user.avatarUrl || user.profile_image_url || null,
   profileImageUrl: user.profile_image_url || user.avatar_url || user.avatarUrl || null,
+  avatarPosition: user.profile_image_position || user.avatar_position || '50% 50%',
+  profileImagePosition: user.profile_image_position || user.avatar_position || '50% 50%',
   googleSub: user.google_sub || user.googleSub || null,
   createdAt: user.created_at || user.createdAt,
   lastLogin: user.last_login_at || user.lastLogin,
@@ -748,6 +750,23 @@ const normalizeRole = (role) => {
   return ROLES.STAFF;
 };
 
+/* The mailboxes that own this server. A first Google sign-in has nobody to ask for a promotion, so
+   without this the very first person on a fresh install would arrive in the Staff tier and find no
+   administrator above them — the address is read from the environment, which the browser cannot
+   write to, and only decides the role of an account being created here for the first time. */
+const adminGoogleEmails = new Set(
+  String(process.env.ADMIN_GOOGLE_EMAILS || '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean)
+);
+const googleAccountRole = (email) => {
+  const address = String(email || '')
+    .trim()
+    .toLowerCase();
+  return adminGoogleEmails.has(address) ? ROLES.ADMIN : ROLES.STAFF;
+};
+
 /* A role says who someone is; a permission says whether this particular action is allowed, and the
    brief wants the second question asked per action so one person can be widened or narrowed without
    inventing a fourth role. The set is resolved lazily and cached on the request, because the
@@ -850,8 +869,8 @@ app.use((req, res, next) => {
   }
   next();
 });
-app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 app.use(cookieParser(sessionSecret));
 /* The repo root is not a web root. It also holds .env, data/ (user records and tokens), db/,
    server logs and node_modules, and a blanket express.static(__dirname) used to hand any of them
@@ -983,7 +1002,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
         email,
         passwordHash: null,
         provider: 'google',
-        role: ROLES.STAFF,
+        role: googleAccountRole(email),
         googleSub,
         avatarUrl,
         emailVerified: true,
@@ -1061,6 +1080,10 @@ app.patch('/api/profile/me', requireAuth, async (req, res) => {
     const phoneNumber = String(body.phoneNumber || '').trim();
     const designation = String(body.designation || '').trim();
     const profileImageUrl = String(body.profileImageUrl || '').trim();
+    const profileImagePosition =
+      String(body.profileImagePosition || body.avatarPosition || '50% 50%')
+        .trim()
+        .slice(0, 100) || '50% 50%';
 
     const user = await findUserById(req.user.id);
     if (!user) {
@@ -1114,6 +1137,8 @@ app.patch('/api/profile/me', requireAuth, async (req, res) => {
       phoneNumber: phoneNumber || user.phone_number || null,
       designation: designation || user.designation || null,
       profileImageUrl: profileImageUrl || user.profile_image_url || user.avatar_url || null,
+      profileImagePosition:
+        profileImagePosition || user.profile_image_position || user.avatar_position || '50% 50%',
     };
 
     const updated = await updateUserProfile(req.user.id, updatePayload);
@@ -4518,7 +4543,7 @@ app.post('/api/auth/signup', authRequestLimiter, async (req, res) => {
       email,
       passwordHash,
       provider: 'email',
-      role: 'STAFF',
+      role: 'ADMIN',
     });
 
     if (!user) {
@@ -4997,5 +5022,8 @@ async function startServer() {
     process.exit(1);
   }
 }
+
+/* Exported so the routing decision can be tested without driving a Google handshake through it. */
+module.exports = { app, googleAccountRole };
 
 startServer();

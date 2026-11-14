@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   phone_number VARCHAR(40),
   designation VARCHAR(120),
   profile_image_url TEXT,
+  profile_image_position VARCHAR(40) NOT NULL DEFAULT '50% 50%',
   password_hash VARCHAR(255) NOT NULL,
   provider VARCHAR(50) NOT NULL DEFAULT 'email',
   google_sub VARCHAR(255),
@@ -96,6 +97,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(40);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS designation VARCHAR(120);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_url TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_position VARCHAR(40) NOT NULL DEFAULT '50% 50%';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_email VARCHAR(320);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_change_pending BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_change_requested_at TIMESTAMPTZ;

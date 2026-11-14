@@ -216,9 +216,33 @@ function syncPaint() {
   }
 }
 
+async function syncRefreshNow() {
+  if (!syncSignedIn() || !window.SurveyAuth) return;
+
+  try {
+    await syncPull({ full: true });
+  } catch (error) {
+    if (error && (error.status === 403 || error.status === 400)) {
+      SYNC.denied = error.message || 'The server would not let this account read the register.';
+    } else {
+      SYNC.waiting = true;
+    }
+  }
+
+  try {
+    await syncFlush({ retry: true });
+  } catch {
+    SYNC.waiting = true;
+  }
+
+  syncPaint();
+}
+
 function syncSchedule(delay = 5000) {
   clearTimeout(SYNC.timer);
-  SYNC.timer = setTimeout(syncFlush, delay);
+  SYNC.timer = setTimeout(() => {
+    if (syncSignedIn()) syncRefreshNow();
+  }, delay);
 }
 
 /* A push the server refused means its copy is newer than ours. Newest wins, so our version is the one
@@ -326,7 +350,7 @@ async function syncFlush({ retry = false } = {}) {
     );
   syncPaint();
   const left = syncQueue();
-  if (left.edit.length || left.remove.length) syncSchedule(30000);
+  if (left.edit.length || left.remove.length || syncSignedIn()) syncSchedule(30000);
 }
 
 function syncDropSent(id) {
@@ -342,10 +366,18 @@ async function syncTake(id) {
     const incoming = payload.case && payload.case.payload;
     if (!incoming) return;
     const mine = DB[id];
+    const clean = incoming && typeof incoming === 'object' ? incoming : {};
+    clean.f = clean.f || {};
+    clean.x = clean.x || {};
+    clean.b = clean.b || { a: [], b: [] };
+    clean.tps = Array.isArray(clean.tps) ? clean.tps : [];
+    clean.hist = Array.isArray(clean.hist)
+      ? clean.hist
+      : [{ s: clean.st || 'Intimation', t: clean.cr || Date.now() }];
     if (!mine || stampOf(incoming) >= stampOf(mine)) {
-      DB[id] = incoming;
+      DB[id] = clean;
       ST.s('sp.db', JSON.stringify(DB));
-      syncRecordSent(id, incoming.u);
+      syncRecordSent(id, clean.u);
       if (cur === id) load(id);
       else if (window.drawDash) drawDash();
     }
@@ -389,6 +421,27 @@ async function syncPull({ full = false } = {}) {
   const payload = await window.SurveyAuth.request(`/api/cases${query}`);
   const rows = Array.isArray(payload.cases) ? payload.cases : [];
   if (full) syncScopeOf(rows);
+  const queue = syncQueue(),
+    neverSent = queue.edit.concat(queue.refused),
+    serverIds = new Set(rows.map((row) => row.id));
+
+  /* A case that is still on this device but does not appear in the server's current list is a delete
+     from the shared source of truth, unless it is still queued as a local creation or a local edit the
+     device has not been able to send. Local-only work stays on device so the surveyor can keep it and
+     send it later; server-side deletion should not come back on refresh. */
+  const toRemove = Object.keys(DB).filter((id) => {
+    if (serverIds.has(id)) return false;
+    if (queue.edit.includes(id) || queue.refused.includes(id) || queue.remove.includes(id))
+      return false;
+    return true;
+  });
+  if (toRemove.length) {
+    toRemove.forEach((id) => {
+      delete DB[id];
+      if (cur === id) cur = null;
+    });
+  }
+
   /* Which of this device's cases the register has never accepted, read before anything is overwritten.
 
      Two shapes put a case in that list while the register still wins the date: the ordinary one, where
@@ -398,9 +451,8 @@ async function syncPull({ full = false } = {}) {
      Comparing dates alone then buried that afternoon of work: the audit trail kept the write but no
      version of the answers, so nothing on either side of the network could have shown it or brought it
      back. Both shapes now keep what they displaced. */
-  const queue = syncQueue(),
-    neverSent = queue.edit.concat(queue.refused);
   let changed = 0;
+  if (toRemove.length) changed += toRemove.length;
   rows.forEach((row) => {
     const incoming = row.payload;
     if (!incoming) return;
@@ -418,12 +470,29 @@ async function syncPull({ full = false } = {}) {
       syncRescue(row.id, mine);
       syncHold(row.id);
     }
-    DB[row.id] = incoming;
-    syncRecordSent(row.id, incoming.u);
+    const clean = incoming && typeof incoming === 'object' ? incoming : {};
+    clean.f = clean.f || {};
+    clean.x = clean.x || {};
+    clean.b = clean.b || { a: [], b: [] };
+    clean.tps = Array.isArray(clean.tps) ? clean.tps : [];
+    clean.hist = Array.isArray(clean.hist)
+      ? clean.hist
+      : [{ s: clean.st || 'Intimation', t: clean.cr || Date.now() }];
+    DB[row.id] = clean;
+    syncRecordSent(row.id, clean.u);
     changed += 1;
   });
   if (changed) ST.s('sp.db', JSON.stringify(DB));
   if (payload.serverTime) ST.s(SYNC_SINCE, payload.serverTime);
+  if (changed && cur && !DB[cur]) {
+    if (Object.keys(DB).length) {
+      cur = Object.keys(DB)[0];
+      load(cur);
+    } else {
+      cur = null;
+      if (typeof window.showDash === 'function') window.showDash();
+    }
+  }
   return changed;
 }
 
@@ -468,11 +537,18 @@ async function syncSessionReady() {
     else if (window.drawDash) drawDash();
   }
   const left = syncQueue();
-  if (left.edit.length || left.remove.length) syncSchedule(20000);
+  if (syncSignedIn()) syncSchedule(20000);
+  else if (left.edit.length || left.remove.length) syncSchedule(20000);
 }
 
 addEventListener('online', () => syncSchedule(500));
 addEventListener('offline', syncPaint);
+window.addEventListener('focus', () => {
+  if (syncSignedIn()) syncSchedule(500);
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && syncSignedIn()) syncSchedule(500);
+});
 
 window.syncSchedule = syncSchedule;
 window.syncSessionReady = syncSessionReady;

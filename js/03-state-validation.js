@@ -8,8 +8,26 @@ let DB = {},
   SHOW = false,
   TCH = new Set();
 
+const normalizeCase = (value) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  value.f = value.f || {};
+  value.x = value.x || {};
+  value.b = value.b || { a: [], b: [] };
+  value.tps = Array.isArray(value.tps) ? value.tps : [];
+  value.photos = Array.isArray(value.photos) ? value.photos : [];
+  value.hist = Array.isArray(value.hist)
+    ? value.hist
+    : [{ s: value.st || 'Intimation', t: value.cr || Date.now() }];
+  return value;
+};
+
 try {
   DB = JSON.parse(ST.g('sp.db') || '{}');
+  Object.keys(DB).forEach((id) => {
+    const fixed = normalizeCase(DB[id]);
+    if (fixed) DB[id] = fixed;
+    else delete DB[id];
+  });
 } catch {
   DB = {};
 }
@@ -30,6 +48,7 @@ const blank = (mod = 'motor') => ({
   x: {},
   f: {},
   tps: [],
+  photos: [],
   /* IndexedDB id of the photograph designated as this case's cover; see coverPhotoFor(). */
   cover: '',
   b: { a: [{ no: '', amt: '' }], b: [{ no: '', amt: '' }] },
@@ -42,7 +61,8 @@ function load(id) {
     DB[c.id] = c;
     cur = c.id;
   }
-  Dd = DB[cur];
+  Dd = normalizeCase(DB[cur]) || blank();
+  DB[cur] = Dd;
   Dd.b = Dd.b || { a: [], b: [] };
   Dd.tps = Array.isArray(Dd.tps) ? Dd.tps : [];
   Dd.x = Dd.x || {};
@@ -79,7 +99,7 @@ function load(id) {
   svSeen[cur] = svBody();
 }
 
-const g = (k) => (Dd.f[k] || '').trim(),
+const g = (k) => ((Dd && Dd.f && Dd.f[k]) || '').trim(),
   nz = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, ''),
   dt = (v) => new Date(v + 'T00:00:00');
 

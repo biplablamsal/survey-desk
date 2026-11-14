@@ -209,17 +209,68 @@
     return payload.previewUrl ? `${message} (Dev preview: ${payload.previewUrl})` : message;
   }
 
+  function userAvatarUrl(user) {
+    if (!user) return '';
+    const candidates = [
+      user.avatarUrl,
+      user.profileImageUrl,
+      user.picture,
+      user.image,
+      user.avatar,
+    ];
+    const value = candidates.find((entry) => typeof entry === 'string' && entry.trim());
+    return value ? value.trim() : '';
+  }
+
+  function userAvatarPosition(user) {
+    const value = String(
+      (user && (user.avatarPosition || user.profileImagePosition || user.avatarPos || '50% 50%')) ||
+        '50% 50%'
+    ).trim();
+    if (!value) return '50% 50%';
+    const [x = '50%', y = '50%'] = value.split(/\s+/);
+    return `${x || '50%'} ${y || '50%'}`;
+  }
+
   function renderUserStatus() {
     const user = session.user;
     const badge = document.getElementById('auth-user-badge');
     if (badge) {
-      badge.textContent = user ? `Signed in: ${user.name || user.email}` : '';
-      badge.hidden = !user;
+      badge.textContent = '';
+      badge.hidden = true;
     }
     /* The header is built before /api/auth/me answers, so the name has to be written here too or a
        signed-in surveyor keeps the "Guest" label until the next reload. */
     const who = document.getElementById('who-name');
     if (who) who.textContent = (user && (user.fullName || user.name || user.email)) || 'Guest';
+
+    const avatarWrap = document.getElementById('who-avatar');
+    const avatarUrl = userAvatarUrl(user);
+    if (avatarWrap) {
+      avatarWrap.classList.toggle('has-image', Boolean(avatarUrl));
+      avatarWrap.textContent = '';
+      avatarWrap.innerHTML = '';
+      if (avatarUrl) {
+        const img = document.createElement('img');
+        img.src = avatarUrl;
+        img.alt = 'Profile picture';
+        img.loading = 'lazy';
+        img.style.objectPosition = userAvatarPosition(user);
+        avatarWrap.appendChild(img);
+      } else {
+        const initials =
+          ((user && (user.fullName || user.name || user.email || 'G')) || 'G')
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part[0])
+            .join('')
+            .toUpperCase() || 'G';
+        avatarWrap.textContent = initials.slice(0, 2);
+      }
+    }
+
     ['logout-btn', 'logout-btn-sidebar'].forEach((id) => {
       const btn = document.getElementById(id);
       if (btn) btn.hidden = !user;
@@ -240,11 +291,19 @@
   }
 
   async function showApp() {
+    document.body.classList.remove('auth-locked');
+    document.body.classList.add('auth-ready');
     if (session.user && session.user.mustChangePassword) {
       requireNewPassword();
       return;
     }
     await loadPermissions();
+    /* A signed-in device must merge the server's current case set before the dashboard or case list is
+       painted. Otherwise a stale browser-local copy can win and keep one device from seeing the latest
+       edits made on another device while the same account is in use. */
+    if (typeof window.syncSessionReady === 'function') {
+      await window.syncSessionReady();
+    }
     document.body.classList.remove('auth-locked');
     const shell = document.getElementById('auth-shell');
     if (shell) shell.remove();
@@ -254,10 +313,6 @@
        and a stale note both land where they used to. */
     if (typeof window.resumeApp === 'function') window.resumeApp();
     else if (typeof window.showDash === 'function') window.showDash();
-    /* The register is only worth consulting once there is a session to consult it with, and this is
-       the one place every route to a usable app passes: a stored cookie, a password login, a Google
-       return. Nothing here waits for it — the dashboard is already drawn from local data. */
-    if (typeof window.syncSessionReady === 'function') window.syncSessionReady();
   }
 
   /* An account that still holds a password somebody else chose never reaches the dashboard — the
@@ -747,7 +802,7 @@
         if (session.user) session.user.mustChangePassword = false;
         el.password.value = '';
         el.confirm.value = '';
-        showApp();
+        await showApp();
         if (window.toast) window.toast(withPreview(payload, 'Password changed successfully.'));
       } catch (error) {
         handleAuthError(el, error, 'setpassword');
@@ -804,7 +859,7 @@
       });
       session.user = payload.user || null;
       el.password.value = '';
-      showApp();
+      await showApp();
     } catch (error) {
       handleAuthError(el, error, 'login');
       el.password.value = '';
@@ -953,8 +1008,9 @@
       if (btn) btn.onclick = () => logout();
     });
 
+    document.body.classList.remove('auth-ready');
     document.body.classList.add('auth-locked');
-    shell.hidden = false;
+    shell.hidden = true;
 
     let notice = null;
     try {
@@ -983,12 +1039,13 @@
     }
 
     if (signedIn) {
-      showApp();
+      await showApp();
       if (notice && window.toast) window.toast(notice.message);
       return;
     }
 
     renderUserStatus();
+    shell.hidden = false;
     if (notice) {
       if (notice.noServer) showNoServer(el, notice.noServer);
       else setFormMessage(el.message, notice.message, notice.kind);
@@ -996,11 +1053,21 @@
     }
   }
 
+  function updateSessionUser(patch) {
+    if (!patch) return session.user;
+    const next = typeof patch === 'function' ? patch(session.user || {}) : patch;
+    if (!next || typeof next !== 'object') return session.user;
+    session.user = { ...(session.user || {}), ...next };
+    renderUserStatus();
+    return session.user;
+  }
+
   window.SurveyAuth = {
     init,
     readAuth,
     request,
     requestBytes,
+    updateSessionUser,
     /* The same origin every call is made to, for the one thing that cannot be a fetch: an <img> or a
        link to a stored file, which the server only answers with the session cookie attached. */
     apiBase: API_BASE,

@@ -230,26 +230,19 @@ function ivCard(q, L, i, redraw) {
   };
   draw();
   foot();
-  let ask = 0,
-    tm;
   const dl = h('button', { class: 'b', type: 'button' }, '\ud83d\uddd1 Delete this bill');
   dl.onclick = () => {
-    if (!ask) {
-      ask = 1;
-      dl.textContent = 'Confirm delete?';
-      dl.classList.add('er');
-      tm = setTimeout(() => {
-        ask = 0;
-        dl.textContent = '\ud83d\uddd1 Delete this bill';
-        dl.classList.remove('er');
-      }, 3500);
-      return;
-    }
-    clearTimeout(tm);
-    L.splice(i, 1);
-    if (!L.length) L.push(newInv());
-    redraw();
-    sv(1);
+    const billRef = (iv.no || 'this bill').trim() || 'this bill';
+    confirmDeleteDialog({
+      title: 'Delete bill',
+      message: `Are you sure you want to delete ${billRef}? This cannot be undone.`,
+      onConfirm: () => {
+        L.splice(i, 1);
+        if (!L.length) L.push(newInv());
+        redraw();
+        sv(1);
+      },
+    });
   };
   card.append(
     h(

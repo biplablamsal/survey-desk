@@ -51,11 +51,51 @@ const pdb = async (mode, fn) => {
 const put = (p) => pdb('readwrite', (s) => s.put(p)),
   del = (id) => pdb('readwrite', (s) => s.delete(id));
 
+const mergeCasePhotoList = (cid, list) => {
+  const merged = new Map();
+  const push = (photo) => {
+    if (!photo || typeof photo !== 'object' || !photo.id) return;
+    const row = { ...photo, cid: photo.cid || cid };
+    merged.set(row.id, row);
+  };
+  const local = Array.isArray(list) ? list : [];
+  const synced = Array.isArray(DB[cid] && DB[cid].photos) ? DB[cid].photos : [];
+  local.forEach(push);
+  synced.forEach(push);
+  return [...merged.values()].sort((a, b) => (Number(a.t) || 0) - (Number(b.t) || 0));
+};
+
+function syncCasePhoto(p, cid = cur) {
+  if (!cid || !DB[cid] || !p || typeof p !== 'object' || !p.id) return null;
+  const caseRow = DB[cid];
+  const list = Array.isArray(caseRow.photos) ? caseRow.photos : [];
+  const existing = list.findIndex((entry) => entry.id === p.id);
+  const row = { ...p, cid: p.cid || cid };
+  if (existing >= 0) list[existing] = row;
+  else list.push(row);
+  caseRow.photos = list;
+  caseRow.u = Date.now();
+  if (typeof sv === 'function') sv(1);
+  return row;
+}
+
+function removeCasePhoto(id, cid = cur) {
+  if (!cid || !DB[cid]) return false;
+  const list = Array.isArray(DB[cid].photos) ? DB[cid].photos : [];
+  const before = list.length;
+  DB[cid].photos = list.filter((p) => p.id !== id);
+  if (DB[cid].photos.length !== before) {
+    DB[cid].u = Date.now();
+    if (typeof sv === 'function') sv(1);
+    return true;
+  }
+  return false;
+}
+
 async function loadPH() {
   try {
-    PH = ((await pdb('readonly', (s) => s.getAll())) || [])
-      .filter((p) => p.cid === cur)
-      .sort((a, b) => a.t - b.t);
+    const local = ((await pdb('readonly', (s) => s.getAll())) || []).filter((p) => p.cid === cur);
+    PH = mergeCasePhotoList(cur, local);
   } catch {
     PH = [];
   }
@@ -84,6 +124,16 @@ async function buildPhotoIndex() {
   } catch {
     all = [];
   }
+  Object.keys(DB).forEach((cid) => {
+    const synced = Array.isArray(DB[cid].photos) ? DB[cid].photos : [];
+    all = all.concat(
+      synced.map((p) => ({
+        ...p,
+        cid: p.cid || cid,
+        id: p.id || `${cid}-${Date.now()}-${Math.random()}`,
+      }))
+    );
+  });
   const ix = {};
   for (const p of all) (ix[p.cid] = ix[p.cid] || []).push(p);
   Object.values(ix).forEach((L) => L.sort((a, b) => a.t - b.t));
@@ -370,7 +420,8 @@ const reviewBatch = async (items, onDone) => {
         t: Date.now() + saved / 1000,
       };
       await put(p);
-      PH.push(p);
+      const synced = syncCasePhoto(p, p.cid || cur) || p;
+      PH.push(synced);
       saved++;
     }
     if (saved) invalidatePhotoIndex();
@@ -425,6 +476,7 @@ function photosUI(m) {
   const save = async (p) => {
     try {
       await put(p);
+      syncCasePhoto(p, p.cid || cur);
       invalidatePhotoIndex();
     } catch {
       msg.textContent = 'Could not save (browser storage unavailable or full)';
@@ -528,6 +580,7 @@ function photosUI(m) {
                         try {
                           await del(p.id);
                         } catch {}
+                        removeCasePhoto(p.id, p.cid || cur);
                         invalidatePhotoIndex();
                         PH = PH.filter((x) => x.id !== p.id);
                         draw();

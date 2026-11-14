@@ -231,13 +231,16 @@ function render(options = {}) {
 function hdr() {
   const s = $('#cs');
   s.replaceChildren(
-    ...Object.values(DB).map((c) =>
-      h(
-        'option',
-        { value: c.id },
-        (c.f.case_claimNo || 'Untitled case') + ' · ' + (c.f.case_insReg || '—')
-      )
-    )
+    ...Object.values(DB)
+      .filter((c) => c && typeof c === 'object')
+      .map((c) => {
+        const f = c.f || {};
+        return h(
+          'option',
+          { value: c.id },
+          (f.case_claimNo || 'Untitled case') + ' · ' + (f.case_insReg || '—')
+        );
+      })
   );
   s.value = cur;
 }
@@ -435,26 +438,64 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') closeSideMenu();
 });
 
-let dc = 0;
+function confirmDeleteDialog({
+  title = 'Delete item',
+  message = 'Are you sure you want to delete this item? This cannot be undone.',
+  confirmLabel = 'Yes, delete',
+  onConfirm,
+}) {
+  const dlg = h('dialog', { class: 'ac2-dlg', 'aria-labelledby': 'confirm-delete-title' });
+  const form = h(
+    'form',
+    { method: 'dialog' },
+    h('h3', { id: 'confirm-delete-title' }, title),
+    h('p', { class: 'mu' }, message),
+    h(
+      'div',
+      { class: 'bar' },
+      h(
+        'button',
+        {
+          class: 'b',
+          type: 'button',
+          onclick: () => dlg.close(),
+        },
+        'No'
+      ),
+      h(
+        'button',
+        {
+          class: 'b p er',
+          type: 'submit',
+          onclick: () => {
+            dlg.close();
+            if (typeof onConfirm === 'function') onConfirm();
+          },
+        },
+        confirmLabel
+      )
+    )
+  );
+  dlg.append(form);
+  document.body.append(dlg);
+  dlg.addEventListener('close', () => dlg.remove());
+  dlg.showModal();
+}
 
-$('#del').onclick = (e) => {
-  const b = e.target;
-  if (!dc) {
-    dc = 1;
-    b.textContent = 'Confirm delete?';
-    setTimeout(() => {
-      dc = 0;
-      b.textContent = 'Delete';
-    }, 3000);
-    return;
-  }
-  delete DB[cur];
-  PH.forEach((p) => del(p.id).catch(() => 0));
-  dc = 0;
-  b.textContent = 'Delete';
-  cur = null;
-  sv(1);
-  showDash();
+$('#del').onclick = () => {
+  const target = DB[cur];
+  const caseId = target && target.id ? target.id : cur;
+  confirmDeleteDialog({
+    title: 'Delete case',
+    message: `Are you sure you want to delete ${caseId}? This cannot be undone.`,
+    onConfirm: () => {
+      delete DB[cur];
+      PH.forEach((p) => del(p.id).catch(() => 0));
+      cur = null;
+      sv(1);
+      showDash();
+    },
+  });
 };
 
 $('#dx').onclick = () => {

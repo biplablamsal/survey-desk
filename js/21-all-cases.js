@@ -1069,15 +1069,22 @@ function acClosePops() {
   });
 }
 
-/* Both popovers — the Columns picker and the row/card action menu — dismiss on a click outside
-   them. Only the Columns picker had this listener, so a menu opened on a phone stayed over the
-   list until its own button was tapped again. */
-addEventListener('click', (e) => {
-  const t = e.target;
-  if (!(t instanceof Element)) return;
-  if (t.closest('.ac2-menu') || t.closest('.ac2-colbtn') || t.closest('.ac2-dots')) return;
-  acClosePops();
-});
+/* Both popovers — the Columns picker and the row/card action menu — dismiss on a pointer down
+   outside them. Doing it on the capture path keeps the tap from also reaching the field or control
+   behind the menu, which is the bug that was opening a random form or box after the menu should have
+   been closed. */
+document.addEventListener(
+  'pointerdown',
+  (e) => {
+    const t = e.target;
+    if (!(t instanceof Element)) return;
+    if (t.closest('.ac2-menu') || t.closest('.ac2-colbtn') || t.closest('.ac2-dots')) return;
+    acClosePops();
+    e.preventDefault();
+    e.stopPropagation();
+  },
+  true
+);
 
 function acColumnsBtn() {
   return h(
@@ -1123,6 +1130,15 @@ function acColumnsBtn() {
   );
 }
 
+function acConfirmDeleteCase(r) {
+  acClosePops();
+  confirmDeleteDialog({
+    title: 'Delete case',
+    message: `Are you sure you want to delete ${r.id} (${r.who || 'Unassigned'})? This cannot be undone.`,
+    onConfirm: () => delCase(r.c.id),
+  });
+}
+
 function acMenu(btn, r) {
   const wasOpen = btn.getAttribute('aria-expanded') === 'true';
   acClosePops();
@@ -1135,16 +1151,41 @@ function acMenu(btn, r) {
     items = [
       h(
         'button',
-        { type: 'button', role: 'menuitem', onclick: () => go('report') },
+        {
+          type: 'button',
+          role: 'menuitem',
+          onclick: (e) => {
+            e.stopPropagation();
+            go('report');
+          },
+        },
         'View case summary'
       ),
-      h('button', { type: 'button', role: 'menuitem', onclick: () => go('case') }, 'Edit details'),
+      h(
+        'button',
+        {
+          type: 'button',
+          role: 'menuitem',
+          onclick: (e) => {
+            e.stopPropagation();
+            go('case');
+          },
+        },
+        'Edit details'
+      ),
     ];
   if (keys.includes('photos'))
     items.push(
       h(
         'button',
-        { type: 'button', role: 'menuitem', onclick: () => go('photos') },
+        {
+          type: 'button',
+          role: 'menuitem',
+          onclick: (e) => {
+            e.stopPropagation();
+            go('photos');
+          },
+        },
         'Upload photos / documents'
       )
     );
@@ -1156,7 +1197,10 @@ function acMenu(btn, r) {
           type: 'button',
           role: 'menuitem',
           ...cond(r.c.pSub, 'disabled'),
-          onclick: () => go('prelim'),
+          onclick: (e) => {
+            e.stopPropagation();
+            go('prelim');
+          },
         },
         r.c.pSub ? 'Preliminary submitted' : 'Preliminary report'
       )
@@ -1165,7 +1209,14 @@ function acMenu(btn, r) {
     items.push(
       h(
         'button',
-        { type: 'button', role: 'menuitem', onclick: () => go('final') },
+        {
+          type: 'button',
+          role: 'menuitem',
+          onclick: (e) => {
+            e.stopPropagation();
+            go('final');
+          },
+        },
         r.c.fSub ? 'Final report submitted' : 'Final report'
       )
     );
@@ -1177,7 +1228,21 @@ function acMenu(btn, r) {
         'Assign surveyor'
       )
     );
-    items.push(delBtn(r.c));
+    items.push(
+      h(
+        'button',
+        {
+          type: 'button',
+          role: 'menuitem',
+          class: 'danger',
+          onclick: (e) => {
+            e.stopPropagation();
+            acConfirmDeleteCase(r);
+          },
+        },
+        'Delete case'
+      )
+    );
   }
   const pop = h('div', { class: 'ac2-menu', role: 'menu' }, ...items);
   btn.parentElement.append(pop);
@@ -1546,7 +1611,9 @@ function acOpenDrawer() {
   } else {
     acDrawerEl.replaceWith((acDrawerEl = acDrawer()));
   }
-  acDrawerEl.showModal();
+  /* This filter drawer is a work panel, not a full-page lock screen. Keep it open so the user can
+     still interact with other buttons and sections while refining the case search fields. */
+  acDrawerEl.show();
   const first = acDrawerEl.querySelector('select, input');
   if (first) first.focus();
 }
@@ -1624,13 +1691,7 @@ function acError(e) {
 }
 
 function acOpen(id, secKey) {
-  openCase(id);
-  if (secKey) {
-    sec = secKey;
-    /* openCase() repainted for the case's first page; this repaint is the section the directory deep
-       link asked for, and render() records which page of the case is on screen. */
-    render();
-  }
+  openCase(id, secKey);
 }
 
 function renderAllCasesView() {

@@ -333,64 +333,162 @@ const WHO_ITEMS = [
 function renderWhoPop() {
   const u = getCurrentAuthUser();
   const pop = $('#who-pop');
+  const avatarUrl = u && (u.avatarUrl || u.profileImageUrl || u.picture || u.image || u.avatar);
+  const avatarPosition =
+    (u && (u.avatarPosition || u.profileImagePosition || '50% 50%')) || '50% 50%';
+  const initials =
+    ((u && (u.fullName || u.name || u.email || 'G')) || 'G')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase() || 'G';
+
   pop.replaceChildren(
     h(
       'div',
-      { class: 'pop-h' },
-      h('b', {}, (u && (u.fullName || u.name)) || 'Signed out'),
-      h('span', { class: 'mu' }, (u && u.email) || 'Local mode – no account')
-    ),
-    ...(u
-      ? WHO_ITEMS.map(([sec, label, btnId]) =>
-          h(
-            'button',
-            {
-              class: 'pop-row',
-              type: 'button',
-              onclick: () => {
-                closePops();
-                showProfilePage(sec);
-                setMenu(btnId);
-              },
-            },
-            label
-          )
+      { class: 'who-pop-card' },
+      h(
+        'div',
+        { class: 'who-pop-hero' },
+        h(
+          'div',
+          { class: 'who-pop-avatar' },
+          avatarUrl
+            ? h('img', {
+                src: avatarUrl,
+                alt: 'Profile photo',
+                loading: 'lazy',
+                style: { objectPosition: avatarPosition },
+              })
+            : h('span', {}, initials.slice(0, 2))
+        ),
+        h(
+          'div',
+          { class: 'who-pop-meta' },
+          h('strong', {}, (u && (u.fullName || u.name)) || 'Signed out'),
+          h('span', { class: 'mu' }, (u && u.email) || 'Local mode – no account')
         )
-      : []),
-    h(
-      'button',
-      {
-        class: 'pop-row',
-        type: 'button',
-        onclick: () => {
-          closePops();
-          showDash();
-          setMenu('db');
-        },
-      },
-      'Dashboard'
-    ),
-    u
-      ? h(
+      ),
+      h(
+        'div',
+        { class: 'who-pop-list' },
+        ...(u
+          ? WHO_ITEMS.map(([sec, label, btnId]) =>
+              h(
+                'button',
+                {
+                  class: 'pop-row',
+                  type: 'button',
+                  onclick: () => {
+                    closePops();
+                    showProfilePage(sec);
+                    setMenu(btnId);
+                  },
+                },
+                label
+              )
+            )
+          : []),
+        h(
           'button',
           {
-            class: 'pop-row danger',
+            class: 'pop-row',
             type: 'button',
             onclick: () => {
               closePops();
-              /* auth.js owns the logout round-trip and wires #logout-btn; the menu delegates. */
-              $('#logout-btn').click();
+              showDash();
+              setMenu('db');
             },
           },
-          'Logout'
-        )
-      : ''
+          'Dashboard'
+        ),
+        u
+          ? h(
+              'button',
+              {
+                class: 'pop-row danger',
+                type: 'button',
+                onclick: () => {
+                  closePops();
+                  /* auth.js owns the logout round-trip and wires #logout-btn; the menu delegates. */
+                  $('#logout-btn').click();
+                },
+              },
+              'Logout'
+            )
+          : ''
+      )
+    )
   );
 }
 
 function closePops() {
   ['#notif-pop', '#who-pop'].forEach((s) => ($(s).hidden = true));
   ['#notif-btn', '#who-btn'].forEach((s) => $(s).setAttribute('aria-expanded', 'false'));
+}
+
+function closeSearchSuggestions() {
+  const list = $('#gs-suggestions');
+  if (!list) return;
+  list.hidden = true;
+  list.classList.remove('open');
+}
+
+function renderSearchSuggestions() {
+  const gs = $('#gs');
+  const list = $('#gs-suggestions');
+  if (!gs || !list || typeof caseDirectoryRows !== 'function') {
+    return;
+  }
+  const q = gs.value.trim();
+  if (!q) {
+    closeSearchSuggestions();
+    return;
+  }
+  const matches = caseDirectoryRows()
+    .filter((row) => {
+      const label = [row.id, row.who, row.ref, row.ins, row.sv, row.loc, row.vrn]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return label.includes(q.toLowerCase());
+    })
+    .slice(0, 6);
+
+  list.hidden = false;
+  list.classList.add('open');
+  if (!matches.length) {
+    list.replaceChildren(h('div', { class: 'top-search-empty' }, 'No matching cases found.'));
+    return;
+  }
+
+  list.replaceChildren(
+    ...matches.map((row) => {
+      const caseId = row.c ? row.c.id : row.id;
+      const title = row.who && row.who !== '—' ? `${row.id} · ${row.who}` : String(row.id);
+      const detail = [row.c && row.c.st, row.ins && row.ins !== '—' ? row.ins : '']
+        .filter(Boolean)
+        .join(' · ');
+      return h(
+        'button',
+        {
+          class: 'top-search-item',
+          type: 'button',
+          onclick: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeSearchSuggestions();
+            if (typeof openCase === 'function') openCase(caseId);
+          },
+        },
+        h('span', { class: 'top-search-main' }, title),
+        detail ? h('span', { class: 'top-search-sub' }, detail) : null
+      );
+    })
+  );
 }
 
 function togglePop(popSel, btnSel, rebuild) {
@@ -407,6 +505,18 @@ function initHeader() {
   /* Global search drives the All Cases directory, which owns the multi-field matcher. Jumping
      pages on the first keystroke would drop focus, so typing only re-filters an open directory. */
   const gs = $('#gs');
+  const gsWrap = gs && gs.parentElement;
+  if (gs && gsWrap && !gsWrap.classList.contains('top-search')) {
+    const wrap = document.createElement('div');
+    wrap.className = 'top-search';
+    gsWrap.insertBefore(wrap, gs);
+    wrap.appendChild(gs);
+    const list = document.createElement('div');
+    list.id = 'gs-suggestions';
+    list.className = 'top-search-suggestions';
+    list.hidden = true;
+    wrap.appendChild(list);
+  }
   let gt = 0;
   const focusBack = () => {
     const n = $('#gs');
@@ -415,6 +525,7 @@ function initHeader() {
   };
   gs.oninput = () => {
     allCasesState.q = gs.value;
+    renderSearchSuggestions();
     clearTimeout(gt);
     gt = setTimeout(() => {
       /* Persist even when the box is emptied, or a later page load restores a stale filter. */
@@ -429,11 +540,18 @@ function initHeader() {
       }
     }, 500);
   };
+  gs.onfocus = renderSearchSuggestions;
+  gs.onblur = () => setTimeout(closeSearchSuggestions, 120);
   gs.onkeydown = (e) => {
+    if (e.key === 'Escape') {
+      closeSearchSuggestions();
+      return;
+    }
     if (e.key !== 'Enter') return;
     clearTimeout(gt);
     allCasesState.q = gs.value;
     acPersist();
+    closeSearchSuggestions();
     showAllCases();
   };
 
@@ -453,9 +571,18 @@ function initHeader() {
     e.stopPropagation();
     togglePop('#who-pop', '#who-btn', renderWhoPop);
   };
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.top-pop')) closePops();
-  });
+  document.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (!(e.target instanceof Element)) return;
+      if (!e.target.closest('.top-pop')) {
+        closePops();
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    },
+    true
+  );
   /* A panel that rebuilds itself detaches its own button before the click reaches the document, and a
      detached button is no longer inside .top-pop — so "Unread only" would read as a click outside and
      shut the panel the person is still looking at. Stopping the event at the panel answers the question

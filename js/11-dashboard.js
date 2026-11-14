@@ -404,7 +404,7 @@ function trackUI(c) {
   return root;
 }
 
-function openCase(id) {
+function openCase(id, targetSec) {
   view = 'case';
   $('#dash').hidden = true;
   $('.app').hidden = false;
@@ -427,7 +427,8 @@ function openCase(id) {
   $('#ct').hidden = false;
   setMenu('');
   load(id);
-  sec = 'case';
+  if (targetSec && NAV.some((s) => s.k === targetSec)) sec = targetSec;
+  else sec = 'case';
   hdr();
   sv(1);
   render();
@@ -1719,6 +1720,11 @@ async function showProfilePage(section = 'profile') {
     return;
   }
 
+  /* A profile page is rendered in the dashboard container, not inside the case panel. If the user is
+     on a case section (including Final Report) the screen must leave the case view before the profile
+     content is injected, otherwise the call only updates hidden state and the page never appears. */
+  if (typeof showDash === 'function') showDash();
+
   syncAccountSidebarVisibility();
   const el = $('#dash');
   if (!el) return;
@@ -1813,6 +1819,23 @@ async function showProfilePage(section = 'profile') {
       const user = profile.user || {};
       setProfileName(user.fullName || user.name);
       setProfileLicence(user.licenceNumber);
+      const avatarImage =
+        user.profileImageUrl || user.avatarUrl || user.picture || user.image || '';
+      const avatarPosition =
+        String(user.avatarPosition || user.profileImagePosition || '50% 50%').trim() || '50% 50%';
+      const avatarNode = avatarImage
+        ? h('img', {
+            src: avatarImage,
+            alt: 'Profile photo',
+            class: 'account-avatar-img',
+            loading: 'lazy',
+            style: { objectPosition: avatarPosition },
+          })
+        : h(
+            'span',
+            { class: 'account-avatar-fallback' },
+            (user.fullName || user.name || user.email || 'U').trim().charAt(0).toUpperCase() || 'U'
+          );
       const form = h(
         'form',
         { class: 'account-form' },
@@ -1826,11 +1849,7 @@ async function showProfilePage(section = 'profile') {
             h(
               'div',
               { class: 'account-hero' },
-              h(
-                'div',
-                { class: 'account-avatar' },
-                (user.fullName || user.name || user.email || 'U').charAt(0).toUpperCase()
-              ),
+              h('div', { class: 'account-avatar' }, avatarNode),
               h(
                 'div',
                 {},
@@ -1846,6 +1865,151 @@ async function showProfilePage(section = 'profile') {
                   ),
                   h('span', { class: 'pill pr-m' }, user.role || 'User')
                 )
+              )
+            )
+          ),
+          h(
+            'div',
+            { class: 'account-card' },
+            h('h3', {}, 'Profile photo'),
+            h(
+              'div',
+              { id: 'profile-upload-box', class: 'profile-upload-box' },
+              h(
+                'div',
+                { class: 'profile-upload-preview' },
+                h('div', { class: 'account-avatar medium' }, avatarNode)
+              ),
+              h(
+                'div',
+                { class: 'profile-upload-copy' },
+                h('strong', {}, 'Update your profile picture'),
+                h(
+                  'p',
+                  { class: 'mu' },
+                  'Choose a photo and adjust the focus so the main subject remains visible inside the circular avatar.'
+                ),
+                h('label', { class: 'b', for: 'profile-image-upload' }, 'Choose image'),
+                h('input', {
+                  id: 'profile-image-upload',
+                  type: 'file',
+                  accept: 'image/*',
+                  hidden: 'hidden',
+                  onchange: async (event) => {
+                    const file = event.target && event.target.files && event.target.files[0];
+                    if (!file) return;
+                    if (!file.type.startsWith('image/')) {
+                      alert('Please choose an image file.');
+                      event.target.value = '';
+                      return;
+                    }
+                    const nextUrl = await new Promise((resolve, reject) => {
+                      const reader = new FileReader();
+                      reader.onload = () => resolve(String(reader.result || ''));
+                      reader.onerror = () =>
+                        reject(new Error('The selected image could not be read.'));
+                      reader.readAsDataURL(file);
+                    });
+
+                    const uploadBox = document.getElementById('profile-upload-box');
+                    if (!uploadBox) return;
+
+                    let x = 50;
+                    let y = 50;
+                    let zoom = 1.15;
+                    const stage = document.createElement('div');
+                    stage.className = 'profile-crop-panel';
+
+                    const preview = document.createElement('div');
+                    preview.className = 'profile-crop-stage';
+                    const image = document.createElement('img');
+                    image.className = 'profile-crop-image';
+                    image.src = nextUrl;
+                    image.alt = 'Profile preview';
+                    image.style.objectPosition = `${x}% ${y}%`;
+                    image.style.transform = `scale(${zoom})`;
+                    preview.appendChild(image);
+
+                    const controls = document.createElement('div');
+                    controls.className = 'profile-crop-controls';
+                    const buildSlider = (labelText, value, min, max, oninput) => {
+                      const row = document.createElement('label');
+                      row.className = 'profile-crop-row';
+                      const label = document.createElement('span');
+                      label.textContent = labelText;
+                      const input = document.createElement('input');
+                      input.type = 'range';
+                      input.min = String(min);
+                      input.max = String(max);
+                      input.value = String(value);
+                      input.className = 'profile-crop-slider';
+                      input.addEventListener('input', oninput);
+                      row.append(label, input);
+                      return row;
+                    };
+
+                    const xSlider = buildSlider('Horizontal', x, 0, 100, () => {
+                      x = Number(xSlider.querySelector('input').value);
+                      image.style.objectPosition = `${x}% ${y}%`;
+                    });
+                    const ySlider = buildSlider('Vertical', y, 0, 100, () => {
+                      y = Number(ySlider.querySelector('input').value);
+                      image.style.objectPosition = `${x}% ${y}%`;
+                    });
+                    const zoomSlider = buildSlider('Zoom', 115, 100, 180, () => {
+                      zoom = Number(zoomSlider.querySelector('input').value) / 100;
+                      image.style.transform = `scale(${zoom})`;
+                    });
+                    controls.append(xSlider, ySlider, zoomSlider);
+
+                    const actions = document.createElement('div');
+                    actions.className = 'profile-crop-actions';
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.type = 'button';
+                    cancelBtn.className = 'b';
+                    cancelBtn.textContent = 'Cancel';
+                    cancelBtn.addEventListener('click', async () => {
+                      await showProfilePage('profile');
+                    });
+                    const saveBtn = document.createElement('button');
+                    saveBtn.type = 'button';
+                    saveBtn.className = 'b p';
+                    saveBtn.textContent = 'Use this photo';
+                    saveBtn.addEventListener('click', async () => {
+                      try {
+                        const position = `${x}% ${y}%`;
+                        const result = await window.SurveyAuth.request('/api/profile/me', {
+                          method: 'PATCH',
+                          body: { profileImageUrl: nextUrl, profileImagePosition: position },
+                        });
+                        if (
+                          window.SurveyAuth &&
+                          typeof window.SurveyAuth.updateSessionUser === 'function'
+                        ) {
+                          window.SurveyAuth.updateSessionUser((current) => ({
+                            ...(current || {}),
+                            avatarUrl: nextUrl,
+                            profileImageUrl: nextUrl,
+                            picture: nextUrl,
+                            image: nextUrl,
+                            avatarPosition: position,
+                            profileImagePosition: position,
+                          }));
+                        }
+                        await showProfilePage('profile');
+                        if (result && result.message) toast(result.message);
+                      } catch (error) {
+                        alert(error.message || 'Profile picture upload failed.');
+                      }
+                    });
+                    actions.append(cancelBtn, saveBtn);
+
+                    stage.appendChild(preview);
+                    stage.appendChild(controls);
+                    stage.appendChild(actions);
+                    uploadBox.replaceChildren(stage);
+                  },
+                })
               )
             )
           ),
@@ -3036,32 +3200,49 @@ function toast(t, mark) {
 
 function delBtn(c) {
   const b = h('button', { class: 'b', type: 'button', title: 'Delete this case' }, '🗑 Delete');
-  let a = 0,
-    t;
   b.onclick = (e) => {
     e.stopPropagation();
-    if (!a) {
-      a = 1;
-      b.textContent = 'Confirm delete?';
-      b.classList.add('er');
-      t = setTimeout(() => {
-        a = 0;
-        b.textContent = '🗑 Delete';
-        b.classList.remove('er');
-      }, 3500);
-      return;
-    }
-    clearTimeout(t);
-    delCase(c.id);
+    confirmDeleteDialog({
+      title: 'Delete case',
+      message: `Are you sure you want to delete ${c.id}? This cannot be undone.`,
+      onConfirm: () => delCase(c.id),
+    });
   };
   return b;
 }
 
 async function delCase(id) {
+  const previousView = view;
+  const signedIn = Boolean(
+    window.SurveyAuth && window.SurveyAuth.readAuth && window.SurveyAuth.readAuth().user
+  );
+
   try {
     const all = (await pdb('readonly', (s) => s.getAll())) || [];
     await Promise.all(all.filter((p) => p.cid === id).map((p) => del(p.id)));
   } catch {}
+
+  try {
+    if (signedIn && window.SurveyAuth && typeof window.SurveyAuth.request === 'function') {
+      await window.SurveyAuth.request(`/api/cases/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (typeof syncDropSent === 'function') syncDropSent(id);
+    }
+  } catch (error) {
+    if (error && (error.status === 404 || error.code === 'permission_denied')) {
+      if (typeof syncDropSent === 'function') syncDropSent(id);
+    } else if (window.syncSchedule) {
+      if (typeof syncQueue === 'function') {
+        const q = syncQueue();
+        if (!q.remove.includes(id)) {
+          const sent = JSON.parse(ST.g('sp.sync.sent') || '{}');
+          sent[id] = Number(DB[id] && DB[id].u) || Date.now();
+          ST.s('sp.sync.sent', JSON.stringify(sent));
+        }
+      }
+      syncSchedule(500);
+    }
+  }
+
   delete DB[id];
   if (cur === id) {
     cur = null;
@@ -3073,5 +3254,16 @@ async function delCase(id) {
   if (window.syncSchedule) syncSchedule(500);
   $('#sv').textContent = '✓ Case deleted';
   hdr();
+
+  if (previousView === 'cases') {
+    /* Keep the user on the same all-cases screen after deleting a row there instead of forcing the
+       dashboard, which would also be the screen a refresh resumes on. */
+    if (typeof showAllCases === 'function') {
+      showAllCases();
+      rememberPlace();
+    }
+    return;
+  }
+
   drawDash();
 }
